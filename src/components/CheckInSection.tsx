@@ -36,7 +36,7 @@ const CheckInSection = ({
         <CardTitle className="flex items-center justify-between">
           Check-In
           {isCheckedIn && (
-            <Badge variant="success" className="bg-green-500 text-white">
+            <Badge variant="default" className="bg-green-500 text-white">
               Checked In
             </Badge>
           )}
