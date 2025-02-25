@@ -1,13 +1,5 @@
 import React from "react";
 import { Button } from "./ui/button";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "./ui/navigation-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
   DropdownMenu,
@@ -16,7 +8,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Bell, Calendar, LogOut, Settings, Users } from "lucide-react";
+import {
+  Bell,
+  Calendar,
+  LogOut,
+  Settings,
+  Users,
+  Heart,
+  ShoppingBag,
+  UserCircle,
+  Radio,
+  MapPin,
+  PlayCircle,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardHeaderProps {
   user?: {
@@ -37,6 +42,7 @@ const DashboardHeader = ({
   notifications = 3,
   onLogout = () => console.log("Logout clicked"),
 }: DashboardHeaderProps) => {
+  const navigate = useNavigate();
   return (
     <header className="w-full h-20 bg-white border-b border-gray-200 px-6 flex items-center justify-between">
       <div className="flex items-center gap-4 md:gap-8">
@@ -44,47 +50,46 @@ const DashboardHeader = ({
           Gerenciador de Eventos
         </h1>
 
-        <NavigationMenu>
-          <NavigationMenuList>
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>Schedule</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <div className="grid gap-3 p-4 w-[400px]">
-                  <NavigationMenuLink className="cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <div>
-                        <p className="font-medium">Ver Agenda</p>
-                        <p className="text-sm text-muted-foreground">
-                          Ver todas as sessões futuras
-                        </p>
-                      </div>
-                    </div>
-                  </NavigationMenuLink>
-                </div>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
-
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>Attendees</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <div className="grid gap-3 p-4 w-[400px]">
-                  <NavigationMenuLink className="cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      <div>
-                        <p className="font-medium">Gerenciar Participantes</p>
-                        <p className="text-sm text-muted-foreground">
-                          Ver e gerenciar participantes do evento
-                        </p>
-                      </div>
-                    </div>
-                  </NavigationMenuLink>
-                </div>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/schedule")}
+          >
+            <Calendar className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/sponsors")}
+          >
+            <Heart className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/marketplace")}
+          >
+            <ShoppingBag className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/profile")}
+          >
+            <UserCircle className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/live")}>
+            <Radio className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/checkin")}
+          >
+            <MapPin className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">

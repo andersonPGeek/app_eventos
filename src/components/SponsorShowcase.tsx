@@ -59,43 +59,45 @@ const SponsorShowcase = ({
   const tiers = ["all", "platinum", "gold", "silver", "bronze"] as const;
 
   return (
-    <div className="w-full bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl md:text-2xl font-bold mb-4">
-        Nossos Patrocinadores
-      </h2>
+    <div className="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow">
+      <div className="flex flex-col items-center mb-6">
+        <h2 className="text-xl md:text-2xl font-bold mb-4">
+          Nossos Patrocinadores
+        </h2>
 
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="mb-4">
+        <Tabs defaultValue="all" className="w-full max-w-2xl">
+          <TabsList className="mb-4 flex-wrap justify-center gap-2">
+            {tiers.map((tier) => (
+              <TabsTrigger key={tier} value={tier} className="capitalize">
+                {tier}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
           {tiers.map((tier) => (
-            <TabsTrigger key={tier} value={tier} className="capitalize">
-              {tier}
-            </TabsTrigger>
+            <TabsContent key={tier} value={tier}>
+              <ScrollArea className="w-full pb-16">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
+                  {sponsors
+                    .filter((sponsor) =>
+                      tier === "all" ? true : sponsor.tier === tier,
+                    )
+                    .map((sponsor, index) => (
+                      <SponsorCard
+                        key={index}
+                        name={sponsor.name}
+                        tier={sponsor.tier}
+                        logo={sponsor.logo}
+                        description={sponsor.description}
+                        website={sponsor.website}
+                      />
+                    ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
           ))}
-        </TabsList>
-
-        {tiers.map((tier) => (
-          <TabsContent key={tier} value={tier}>
-            <ScrollArea className="w-full">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
-                {sponsors
-                  .filter((sponsor) =>
-                    tier === "all" ? true : sponsor.tier === tier,
-                  )
-                  .map((sponsor, index) => (
-                    <SponsorCard
-                      key={index}
-                      name={sponsor.name}
-                      tier={sponsor.tier}
-                      logo={sponsor.logo}
-                      description={sponsor.description}
-                      website={sponsor.website}
-                    />
-                  ))}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        ))}
-      </Tabs>
+        </Tabs>
+      </div>
     </div>
   );
 };

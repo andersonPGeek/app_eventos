@@ -4,7 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import SessionCard from "./SessionCard";
 import SessionDetails from "./SessionDetails";
 import { Button } from "./ui/button";
-import { Calendar, Filter } from "lucide-react";
+import { Calendar as CalendarIcon, Filter, Search } from "lucide-react";
+import { Calendar } from "./ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Input } from "./ui/input";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import PageContainer from "./PageContainer";
 
 interface Track {
   id: string;
@@ -40,7 +46,7 @@ interface TimeSlot {
 interface EventScheduleProps {
   tracks?: Track[];
   timeSlots?: TimeSlot[];
-  selectedDate?: Date;
+  initialDate?: Date;
 }
 
 const EventSchedule = ({
@@ -119,82 +125,124 @@ const EventSchedule = ({
       ],
     },
   ],
-  selectedDate = new Date(),
+  initialDate = new Date(),
 }: EventScheduleProps) => {
   const [selectedSession, setSelectedSession] = useState<
     (Session & { time: string }) | null
   >(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredTimeSlots = timeSlots.filter((slot) => {
+    return slot.sessions.some((session) =>
+      session.speaker.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  });
 
   return (
-    <div className="w-full h-full bg-white p-6 rounded-lg shadow-sm">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl md:text-2xl font-bold">Agenda do Evento</h2>
-          <Button variant="outline" size="sm">
-            <Calendar className="w-4 h-4 mr-2" />
-            {selectedDate.toLocaleDateString("pt-BR")}
-          </Button>
-        </div>
-        <Button variant="outline" size="sm">
-          <Filter className="w-4 h-4 mr-2" />
-          Filtrar
-        </Button>
-      </div>
-
-      <Tabs defaultValue={tracks[0].id} className="w-full">
-        <TabsList className="mb-4">
-          {tracks.map((track) => (
-            <TabsTrigger key={track.id} value={track.id}>
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${track.color}`} />
-                {track.name}
+    <PageContainer>
+      <div className="p-4">
+        <div className="w-full h-full bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+              <h2 className="text-xl font-bold">Agenda do Evento</h2>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                  >
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {format(selectedDate, "d MMM yyyy", { locale: ptBR })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => date && setSelectedDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="w-full sm:w-auto">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar palestrante..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 h-9 w-full"
+                />
               </div>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+            </div>
+          </div>
 
-        {tracks.map((track) => (
-          <TabsContent key={track.id} value={track.id}>
-            <ScrollArea className="h-[600px] pr-4">
-              {timeSlots.map((slot, index) => (
-                <div key={index} className="mb-8">
-                  <div className="sticky top-0 bg-white z-10 py-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">
-                      {slot.time}
-                    </h3>
+          <Tabs defaultValue={tracks[0].id} className="w-full">
+            <TabsList className="mb-4 flex-wrap h-auto gap-2">
+              {tracks.map((track) => (
+                <TabsTrigger
+                  key={track.id}
+                  value={track.id}
+                  className="flex-1 sm:flex-none"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${track.color}`} />
+                    {track.name}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                    {slot.sessions
-                      .filter((session) => session.track === track.name)
-                      .map((session) => (
-                        <SessionCard
-                          key={session.id}
-                          title={session.title}
-                          speaker={session.speaker}
-                          time={slot.time}
-                          duration={session.duration}
-                          track={session.track}
-                          location={session.location}
-                          onClick={() =>
-                            setSelectedSession({ ...session, time: slot.time })
-                          }
-                        />
-                      ))}
-                  </div>
-                </div>
+                </TabsTrigger>
               ))}
-            </ScrollArea>
-          </TabsContent>
-        ))}
-      </Tabs>
+            </TabsList>
 
-      {selectedSession && (
-        <SessionDetails
-          session={selectedSession}
-          onBack={() => setSelectedSession(null)}
-        />
-      )}
-    </div>
+            {tracks.map((track) => (
+              <TabsContent key={track.id} value={track.id}>
+                <ScrollArea className="h-[600px] pr-4">
+                  {filteredTimeSlots.map((slot, index) => (
+                    <div key={index} className="mb-8">
+                      <div className="sticky top-0 bg-white z-10 py-2">
+                        <h3 className="text-sm font-medium text-muted-foreground">
+                          {slot.time}
+                        </h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                        {slot.sessions
+                          .filter((session) => session.track === track.name)
+                          .map((session) => (
+                            <SessionCard
+                              key={session.id}
+                              title={session.title}
+                              speaker={session.speaker}
+                              time={slot.time}
+                              duration={session.duration}
+                              track={session.track}
+                              location={session.location}
+                              onClick={() =>
+                                setSelectedSession({
+                                  ...session,
+                                  time: slot.time,
+                                })
+                              }
+                            />
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </TabsContent>
+            ))}
+          </Tabs>
+
+          {selectedSession && (
+            <SessionDetails
+              session={selectedSession}
+              onBack={() => setSelectedSession(null)}
+            />
+          )}
+        </div>
+      </div>
+    </PageContainer>
   );
 };
 

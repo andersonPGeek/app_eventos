@@ -33,7 +33,7 @@ const SponsorCard = ({
   website = "https://example.com",
 }: SponsorCardProps) => {
   return (
-    <Card className="w-full max-w-[300px] h-[200px] bg-white hover:shadow-lg transition-shadow">
+    <Card className="w-full max-w-[300px] bg-white hover:shadow-lg transition-shadow">
       <CardHeader className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="h-12 w-12">
@@ -51,11 +51,11 @@ const SponsorCard = ({
           </Badge>
         </div>
         <CardTitle className="text-lg">{name}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
         <CardDescription className="line-clamp-2">
           {description}
         </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
         <Button
           variant="outline"
           className="w-full"
