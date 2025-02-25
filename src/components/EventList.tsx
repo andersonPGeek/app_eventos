@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
 import { CalendarDays, MapPin, Users } from "lucide-react";
+import { API_ENDPOINTS } from "../config/api";
 
 interface Event {
   id: string;
@@ -18,31 +19,44 @@ interface EventListProps {
   onSelectEvent: (eventId: string) => void;
 }
 
-const defaultEvents: Event[] = [
-  {
-    id: "1",
-    title: "TechConf 2024",
-    date: "2024-06-15",
-    location: "São Paulo, SP",
-    attendees: 500,
-    imageUrl:
-      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop",
-  },
-  {
-    id: "2",
-    title: "DevSummit Brasil",
-    date: "2024-07-20",
-    location: "Rio de Janeiro, RJ",
-    attendees: 300,
-    imageUrl:
-      "https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=800&h=400&fit=crop",
-  },
-];
+const EventList = ({ onSelectEvent }: EventListProps) => {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const EventList = ({
-  events = defaultEvents,
-  onSelectEvent,
-}: EventListProps) => {
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        console.log('Iniciando busca de eventos na URL:', API_ENDPOINTS.eventos);
+        const response = await fetch(API_ENDPOINTS.eventos);
+        console.log('Status da resposta:', response.status);
+        const data = await response.json();
+        console.log('Dados recebidos:', data);
+        
+        const formattedEvents = data.map((event: any) => ({
+          id: event.id,
+          title: event.nomeEvento,
+          date: new Date(event.dataEvento._seconds * 1000).toISOString(),
+          location: event.cidade,
+          attendees: event.participantes,
+          imageUrl: event.foto
+        }));
+        console.log('Eventos formatados:', formattedEvents);
+
+        setEvents(formattedEvents);
+      } catch (error) {
+        console.error('Erro detalhado ao buscar eventos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  if (loading) {
+    return <div className="text-center p-4">Carregando eventos...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-4xl mx-auto">
