@@ -35,6 +35,7 @@ function App() {
     <Suspense fallback={<p>Carregando...</p>}>
       <CartProvider>
         <div className="relative min-h-screen">
+          {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
           <Routes>
             <Route
               path="/"
@@ -57,7 +58,6 @@ function App() {
             <Route path="/cart" element={<Cart />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-          {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
           {isAuthenticated && selectedEventId && <BottomNav />}
         </div>
       </CartProvider>

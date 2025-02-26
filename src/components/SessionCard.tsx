@@ -20,19 +20,7 @@ interface SessionCardProps {
   time?: string;
   duration?: string;
   track?: string;
-  location?: string;
-}
-
-interface SessionCardProps {
-  title?: string;
-  speaker?: {
-    name: string;
-    avatar: string;
-    role: string;
-  };
-  time?: string;
-  duration?: string;
-  track?: string;
+  stage?: string;
   location?: string;
   onClick?: () => void;
 }
@@ -47,6 +35,7 @@ const SessionCard = ({
   time = "09:00 AM",
   duration = "45 min",
   track = "Main Track",
+  stage = "Main Stage",
   location = "Room 101",
   onClick,
 }: SessionCardProps) => {
@@ -56,8 +45,16 @@ const SessionCard = ({
       onClick={onClick}
     >
       <CardHeader className="p-4 pb-2">
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1">
+            <Badge variant="secondary" className="text-[10px] h-5">
+              {stage}
+            </Badge>
+            <Badge variant="outline" className="text-[10px] h-5">
+              {track}
+            </Badge>
+          </div>
+          <div>
             <CardTitle className="text-sm font-semibold line-clamp-1">
               {title}
             </CardTitle>
@@ -70,9 +67,6 @@ const SessionCard = ({
               </div>
             </CardDescription>
           </div>
-          <Badge variant="secondary" className="ml-2 shrink-0">
-            {track}
-          </Badge>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
