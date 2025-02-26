@@ -12,22 +12,22 @@ import { ExternalLink } from "lucide-react";
 
 interface SponsorCardProps {
   name?: string;
-  tier?: "platinum" | "gold" | "silver" | "bronze";
+  tier?: string;
   logo?: string;
   description?: string;
   website?: string;
 }
 
-const tierColors = {
-  platinum: "bg-zinc-300",
-  gold: "bg-yellow-200",
-  silver: "bg-gray-200",
-  bronze: "bg-amber-600",
+const tierColors: Record<string, string> = {
+  "Ouro": "bg-yellow-200 hover:bg-yellow-300",
+  "Prata": "bg-gray-200 hover:bg-gray-300",
+  "Bronze": "bg-amber-600 hover:bg-amber-700",
+  "all": "bg-blue-100 hover:bg-blue-200"
 };
 
 const SponsorCard = ({
   name = "Acme Corporation",
-  tier = "gold",
+  tier = "Ouro",
   logo = "https://api.dicebear.com/7.x/initials/svg?seed=AC",
   description = "Leading provider of innovative solutions for the modern enterprise.",
   website = "https://example.com",
@@ -45,7 +45,7 @@ const SponsorCard = ({
           </div>
           <Badge
             variant="secondary"
-            className={`${tierColors[tier]} text-black capitalize`}
+            className={`${tierColors[tier] || 'bg-gray-100'} text-black capitalize transition-colors`}
           >
             {tier}
           </Badge>
