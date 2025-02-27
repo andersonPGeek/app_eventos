@@ -1,9 +1,8 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useCart } from "../contexts/CartContext";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { ShoppingCart } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import PageContainer from "./PageContainer";
 
 interface ProductDetailsProps {
@@ -34,16 +33,9 @@ const defaultProduct = {
 
 const ProductDetails = ({ product = defaultProduct }: ProductDetailsProps) => {
   const navigate = useNavigate();
-  const { addItem } = useCart();
 
   const handleAddToCart = () => {
-    addItem({
-      id: product.id,
-      title: product.title,
-      price: product.price,
-      imageUrl: product.imageUrl,
-    });
-    navigate("/cart");
+    window.open("https://example.com", "_blank");
   };
 
   const handleBack = () => {
@@ -91,10 +83,8 @@ const ProductDetails = ({ product = defaultProduct }: ProductDetailsProps) => {
               disabled={!product.inStock}
               onClick={handleAddToCart}
             >
-              <ShoppingCart className="mr-2 h-5 w-5" />
-              {product.inStock
-                ? "Adicionar ao Carrinho"
-                : "Produto Indisponível"}
+              <ExternalLink className="mr-2 h-5 w-5" />
+              {product.inStock ? "Eu quero" : "Produto Indisponível"}
             </Button>
           </div>
         </div>

@@ -9,7 +9,7 @@ import {
 } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { ShoppingCart } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 interface ProductCardProps {
   title?: string;
@@ -30,7 +30,9 @@ const ProductCard = ({
   category = "Merchandise",
   inStock = true,
   onImageClick = () => {},
-  onAddToCart = () => {},
+  onAddToCart = () => {
+    window.open("https://example.com", "_blank");
+  },
 }: ProductCardProps) => {
   return (
     <Card className="w-full max-w-[280px] h-[400px] bg-white overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -72,8 +74,8 @@ const ProductCard = ({
           onClick={onAddToCart}
           disabled={!inStock}
         >
-          <ShoppingCart className="h-4 w-4" />
-          {inStock ? "Adicionar" : "Indisponível"}
+          <ExternalLink className="h-4 w-4" />
+          {inStock ? "Eu quero" : "Indisponível"}
         </Button>
       </CardFooter>
     </Card>

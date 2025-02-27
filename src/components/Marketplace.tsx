@@ -2,9 +2,8 @@ import React, { useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import ProductCard from "./ProductCard";
-import { Search, Filter, ShoppingCart } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../contexts/CartContext";
 import {
   Select,
   SelectContent,
@@ -73,8 +72,6 @@ const Marketplace = ({ products = defaultProducts }: MarketplaceProps) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const { items, addItem } = useCart();
-  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -90,21 +87,6 @@ const Marketplace = ({ products = defaultProducts }: MarketplaceProps) => {
   return (
     <div className="w-full min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            size="icon"
-            className="relative"
-            onClick={() => navigate("/cart")}
-          >
-            <ShoppingCart className="h-5 w-5" />
-            {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </Button>
-        </div>
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <h2 className="text-xl md:text-2xl font-bold">Loja do Evento</h2>
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4">
@@ -158,12 +140,7 @@ const Marketplace = ({ products = defaultProducts }: MarketplaceProps) => {
                 inStock={product.inStock}
                 onImageClick={() => navigate(`/product/${product.id}`)}
                 onAddToCart={() => {
-                  addItem({
-                    id: product.id,
-                    title: product.title,
-                    price: product.price,
-                    imageUrl: product.imageUrl,
-                  });
+                  window.open("https://example.com", "_blank");
                 }}
               />
             ))}
