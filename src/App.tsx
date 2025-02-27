@@ -8,7 +8,6 @@ import EventSchedule from "./components/EventSchedule";
 import SponsorShowcase from "./components/SponsorShowcase";
 import Marketplace from "./components/Marketplace";
 import CheckInSection from "./components/CheckInSection";
-import LiveStream from "./components/LiveStream";
 import routes from "tempo-routes";
 import BottomNav from "./components/BottomNav";
 import ProductDetails from "./components/ProductDetails";
@@ -16,6 +15,7 @@ import ProductDetails from "./components/ProductDetails";
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [isNavigationEnabled, setIsNavigationEnabled] = useState(false);
 
   const handleLogin = (email: string, password: string) => {
     // Credenciais fake para teste
@@ -28,6 +28,7 @@ function App() {
 
   const handleEventSelect = (eventId: string) => {
     setSelectedEventId(eventId);
+    setIsNavigationEnabled(true);
   };
 
   return (
@@ -41,25 +42,64 @@ function App() {
               element={
                 !isAuthenticated ? (
                   <LoginPage onLogin={handleLogin} />
-                ) : !selectedEventId ? (
-                  <EventList onSelectEvent={handleEventSelect} />
                 ) : (
-                  <EventSchedule eventId={selectedEventId} />
+                  <EventList onSelectEvent={handleEventSelect} />
                 )
               }
             />
             <Route
               path="/schedule"
-              element={<EventSchedule eventId={selectedEventId} />}
+              element={
+                selectedEventId ? (
+                  <EventSchedule eventId={selectedEventId} />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
             />
-            <Route path="/sponsors" element={<SponsorShowcase />} />
-            <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/checkin" element={<CheckInSection />} />
-            <Route path="/live" element={<LiveStream />} />
-            <Route path="/product/:id" element={<ProductDetails />} />
+            <Route 
+              path="/sponsors" 
+              element={
+                isNavigationEnabled ? (
+                  <SponsorShowcase />
+                ) : (
+                  <Navigate to="/" />
+                )
+              } 
+            />
+            <Route 
+              path="/marketplace" 
+              element={
+                isNavigationEnabled ? (
+                  <Marketplace />
+                ) : (
+                  <Navigate to="/" />
+                )
+              } 
+            />
+            <Route 
+              path="/checkin" 
+              element={
+                isNavigationEnabled ? (
+                  <CheckInSection />
+                ) : (
+                  <Navigate to="/" />
+                )
+              } 
+            />
+            <Route 
+              path="/product/:id" 
+              element={
+                isNavigationEnabled ? (
+                  <ProductDetails />
+                ) : (
+                  <Navigate to="/" />
+                )
+              } 
+            />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-          {isAuthenticated && selectedEventId && <BottomNav />}
+          {isAuthenticated && <BottomNav isEnabled={isNavigationEnabled} />}
         </div>
       </CartProvider>
     </Suspense>

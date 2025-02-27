@@ -5,5 +5,7 @@ export const API_ENDPOINTS = {
     agenda: `${API_BASE_URL}/api/agenda/evento`,
     palestras: `${API_BASE_URL}/api/detalhes-palestra`,
     categoriasProduto: `${API_BASE_URL}/api/categorias-produto`,
-    produtos: `${API_BASE_URL}/api/produtos`
+    produtos: `${API_BASE_URL}/api/produtos`,
+    categoriasPatrocinio: `${API_BASE_URL}/api/categorias-patrocinio`,
+    empresas: `${API_BASE_URL}/api/empresas`
 }; 

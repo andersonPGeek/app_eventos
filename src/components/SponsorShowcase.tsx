@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import SponsorCard from "./SponsorCard";
+import { API_ENDPOINTS } from "../config/api";
 
 interface CategoriaPatrocinio {
   Tipo: string;
@@ -41,7 +42,7 @@ const SponsorShowcase = ({ sponsors }: SponsorShowcaseProps) => {
         
         // Buscar categorias de patrocínio
         console.log('Buscando categorias de patrocínio...');
-        const categoriasResponse = await fetch('http://localhost:3000/api/categorias-patrocinio');
+        const categoriasResponse = await fetch(API_ENDPOINTS.categoriasPatrocinio);
         if (!categoriasResponse.ok) {
           throw new Error(`Erro ao buscar categorias: ${categoriasResponse.status}`);
         }
@@ -58,7 +59,7 @@ const SponsorShowcase = ({ sponsors }: SponsorShowcaseProps) => {
 
         // Buscar empresas
         console.log('Buscando empresas...');
-        const empresasResponse = await fetch('http://localhost:3000/api/empresas');
+        const empresasResponse = await fetch(API_ENDPOINTS.empresas);
         if (!empresasResponse.ok) {
           throw new Error(`Erro ao buscar empresas: ${empresasResponse.status}`);
         }
