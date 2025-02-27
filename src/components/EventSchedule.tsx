@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import SessionCard from "./SessionCard";
@@ -18,106 +18,248 @@ import {
   SelectValue,
 } from "./ui/select";
 import PageContainer from "./PageContainer";
+import { API_ENDPOINTS } from "../config/api";
 
 interface Track {
   id: string;
-  name: string;
-  color: string;
+  nome: string;
 }
 
 interface Stage {
   id: string;
-  name: string;
-  color: string;
+  nome: string;
+}
+
+interface FirestoreTimestamp {
+  _seconds: number;
+  _nanoseconds: number;
+}
+
+interface Lecture {
+  hora: FirestoreTimestamp;
+  nomePalco: string;
+  nomeTrilha: string;
+  titulo_palestra: string;
+  duracao: number;
+  descricao_palestra: string;
+  nome_palestrante: string;
+  cargo_palestrante: string;
+  empresa_palestrante: string;
+  local: string;
+  foto_palestrante: string;
+  minibio_palestrante: string;
+  linkedin_palestrante: string;
+  instagram_palestrante: string;
+  facebook_palestrante: string;
 }
 
 interface Session {
   id: string;
   title: string;
-  description?: string;
+  description: string;
   speaker: {
     name: string;
     avatar: string;
     role: string;
-    bio?: string;
-    social?: {
-      twitter?: string;
+    bio: string;
+    social: {
       linkedin?: string;
-      website?: string;
+      instagram?: string;
+      facebook?: string;
     };
   };
   track: string;
   stage: string;
   location: string;
   duration: string;
-}
-
-interface TimeSlot {
-  time: string;
-  sessions: Session[];
+  time?: string;
 }
 
 interface EventScheduleProps {
-  stages?: Stage[];
-  tracks?: Track[];
-  timeSlots?: TimeSlot[];
-  initialDate?: Date;
+  eventId: string;
 }
 
-const EventSchedule = ({
-  stages = [
-    { id: "1", name: "Palco Principal", color: "bg-blue-500" },
-    { id: "2", name: "Palco 2", color: "bg-green-500" },
-    { id: "3", name: "Palco 3", color: "bg-purple-500" },
-  ],
-  tracks = [
-    { id: "1", name: "Desenvolvimento", color: "bg-orange-500" },
-    { id: "2", name: "Design", color: "bg-pink-500" },
-    { id: "3", name: "Negócios", color: "bg-cyan-500" },
-  ],
-  timeSlots = [
-    {
-      time: "09:00",
-      sessions: [
-        {
-          id: "1",
-          title: "Keynote: O Futuro dos Eventos",
-          description:
-            "Uma exploração profunda sobre como a tecnologia está transformando a indústria de eventos.",
-          speaker: {
-            name: "João Silva",
-            avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=joao",
-            role: "CEO, EventTech",
-            bio: "João Silva é um líder visionário na indústria de eventos.",
-            social: {
-              twitter: "https://twitter.com/joaosilva",
-              linkedin: "https://linkedin.com/in/joaosilva",
-              website: "https://joaosilva.com",
-            },
-          },
-          track: "Desenvolvimento",
-          stage: "Palco Principal",
-          location: "Auditório Principal",
-          duration: "60 min",
-        },
-      ],
-    },
-  ],
-  initialDate = new Date(),
-}: EventScheduleProps) => {
-  const [selectedSession, setSelectedSession] = useState<
-    (Session & { time: string }) | null
-  >(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
+const EventSchedule = ({ eventId }: EventScheduleProps) => {
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTrack, setSelectedTrack] = useState(tracks[0].id);
+  const [selectedTrack, setSelectedTrack] = useState<string>("");
+  const [selectedStage, setSelectedStage] = useState<string>("");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+  const [isLoadingLectures, setIsLoadingLectures] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
 
-  const filteredTimeSlots = timeSlots.filter((slot) => {
-    return slot.sessions.some((session) =>
-      session.speaker.name.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-  });
+  const formatFirestoreDate = (timestamp: FirestoreTimestamp) => {
+    try {
+      const date = new Date(timestamp._seconds * 1000);
+      return date.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return 'Horário não disponível';
+    }
+  };
+
+  // Verificar se eventId está presente
+  useEffect(() => {
+    console.log('EventSchedule - Iniciando com eventId:', eventId);
+    if (!eventId) {
+      console.warn('EventSchedule - ID do evento não fornecido');
+      setError('ID do evento não fornecido');
+      setIsLoadingInitial(false);
+      return;
+    }
+
+    const fetchEventData = async () => {
+      console.log('EventSchedule - Iniciando busca de dados do evento');
+      try {
+        setIsLoadingInitial(true);
+        console.log('EventSchedule - Fazendo requisição para:', `${API_ENDPOINTS.agenda}/${eventId}`);
+        const response = await fetch(`${API_ENDPOINTS.agenda}/${eventId}`);
+        console.log('EventSchedule - Status da resposta:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`Erro ao buscar dados do evento: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('EventSchedule - Dados do evento recebidos:', data);
+        console.log('EventSchedule - Trilhas recebidas:', data.trilhas?.length || 0);
+        console.log('EventSchedule - Palcos recebidos:', data.palcos?.length || 0);
+
+        setTracks(data.trilhas || []);
+        setStages(data.palcos || []);
+        
+        if (data.trilhas?.length > 0) {
+          console.log('EventSchedule - Selecionando primeira trilha:', data.trilhas[0].id);
+          setSelectedTrack(data.trilhas[0].id);
+        }
+        if (data.palcos?.length > 0) {
+          console.log('EventSchedule - Selecionando primeiro palco:', data.palcos[0].id);
+          setSelectedStage(data.palcos[0].id);
+        }
+      } catch (error) {
+        console.error('EventSchedule - Erro ao buscar dados:', error);
+        setError(error instanceof Error ? error.message : 'Erro desconhecido');
+      } finally {
+        setIsLoadingInitial(false);
+        console.log('EventSchedule - Finalizada busca inicial de dados');
+      }
+    };
+
+    fetchEventData();
+  }, [eventId]);
+
+  // Buscar detalhes das palestras quando trilha ou palco são selecionados
+  useEffect(() => {
+    console.log('EventSchedule - Verificando condições para buscar palestras:', {
+      eventId,
+      selectedTrack,
+      selectedStage
+    });
+
+    if (!eventId || !selectedTrack || !selectedStage) {
+      console.log('EventSchedule - Faltam parâmetros para buscar palestras');
+      return;
+    }
+
+    const fetchLectureDetails = async () => {
+      console.log('EventSchedule - Iniciando busca de palestras');
+      try {
+        setIsLoadingLectures(true);
+        const url = `${API_ENDPOINTS.palestras}/${eventId}/${selectedStage}/${selectedTrack}`;
+        console.log('EventSchedule - Fazendo requisição para:', url);
+        
+        const response = await fetch(url);
+        console.log('EventSchedule - Status da resposta de palestras:', response.status);
+        
+        if (response.status === 404) {
+          console.log('EventSchedule - Nenhuma palestra encontrada para os filtros selecionados');
+          setSessions([]);
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Erro ao buscar detalhes das palestras: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('EventSchedule - Palestras recebidas:', data.palestras?.length || 0);
+
+        // Mapear palestras para o formato Session
+        console.log('EventSchedule - Iniciando mapeamento das palestras');
+        const formattedSessions = data.palestras?.map((lecture: Lecture) => ({
+          id: Math.random().toString(36).substr(2, 9),
+          title: lecture.titulo_palestra,
+          description: lecture.descricao_palestra,
+          speaker: {
+            name: lecture.nome_palestrante,
+            avatar: lecture.foto_palestrante,
+            role: `${lecture.cargo_palestrante} @ ${lecture.empresa_palestrante}`,
+            bio: lecture.minibio_palestrante,
+            social: {
+              linkedin: lecture.linkedin_palestrante,
+              instagram: lecture.instagram_palestrante,
+              facebook: lecture.facebook_palestrante
+            }
+          },
+          track: lecture.nomeTrilha,
+          stage: lecture.nomePalco,
+          location: lecture.local,
+          duration: `${lecture.duracao} min`,
+          time: formatFirestoreDate(lecture.hora)
+        })) || [];
+        console.log('EventSchedule - Palestras formatadas:', formattedSessions.length);
+
+        setSessions(formattedSessions);
+      } catch (error) {
+        console.error('EventSchedule - Erro ao buscar detalhes das palestras:', error);
+        setError(error instanceof Error ? error.message : 'Erro desconhecido');
+      } finally {
+        setIsLoadingLectures(false);
+        console.log('EventSchedule - Finalizada busca de palestras');
+      }
+    };
+
+    fetchLectureDetails();
+  }, [eventId, selectedTrack, selectedStage]);
+
+  const LoadingSpinner = ({ message }: { message: string }) => (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="text-center">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
+        <p className="text-gray-600">{message}</p>
+      </div>
+    </div>
+  );
+
+  if (isLoadingInitial) {
+    return <LoadingSpinner message="Carregando dados do evento..." />;
+  }
+
+  if (error) {
+    return <div className="text-red-500 p-4">Erro: {error}</div>;
+  }
+
+  // Primeiro filtrar as sessões pelo nome do palestrante
+  const filteredSessions = sessions.filter((session) =>
+    session.speaker.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Depois agrupar as sessões filtradas por horário
+  const timeSlots = filteredSessions.reduce((acc: { time: string; sessions: Session[] }[], session) => {
+    const existingSlot = acc.find(slot => slot.time === session.time);
+    if (existingSlot) {
+      existingSlot.sessions.push(session);
+    } else {
+      acc.push({ time: session.time || '', sessions: [session] });
+    }
+    return acc;
+  }, []).sort((a, b) => a.time.localeCompare(b.time));
 
   return (
     <PageContainer>
@@ -137,9 +279,7 @@ const EventSchedule = ({
               </Button>
             </div>
 
-            <div
-              className={`space-y-4 ${isFiltersOpen ? "block" : "hidden"} md:block`}
-            >
+            <div className={`space-y-4 ${isFiltersOpen ? "block" : "hidden"} md:block`}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-1 block">Data</label>
@@ -194,12 +334,7 @@ const EventSchedule = ({
                     <SelectContent>
                       {tracks.map((track) => (
                         <SelectItem key={track.id} value={track.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`w-2 h-2 rounded-full ${track.color}`}
-                            />
-                            {track.name}
-                          </div>
+                          {track.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -209,7 +344,7 @@ const EventSchedule = ({
             </div>
           </div>
 
-          <Tabs defaultValue={stages[0].id} className="w-full">
+          <Tabs value={selectedStage} onValueChange={setSelectedStage} className="w-full">
             <TabsList className="mb-4 flex-wrap h-auto gap-2">
               {stages.map((stage) => (
                 <TabsTrigger
@@ -217,10 +352,7 @@ const EventSchedule = ({
                   value={stage.id}
                   className="flex-1 sm:flex-none"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${stage.color}`} />
-                    {stage.name}
-                  </div>
+                  {stage.nome}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -228,43 +360,48 @@ const EventSchedule = ({
             {stages.map((stage) => (
               <TabsContent key={stage.id} value={stage.id}>
                 <ScrollArea className="h-[600px] pr-4">
-                  {filteredTimeSlots.map((slot, index) => (
-                    <div key={index} className="mb-8">
-                      <div className="sticky top-0 bg-white z-10 py-2">
-                        <h3 className="text-sm font-medium text-muted-foreground">
-                          {slot.time}
-                        </h3>
+                  {(() => {
+                    if (isLoadingLectures) {
+                      return <LoadingSpinner message="Carregando palestras..." />;
+                    }
+
+                    if (timeSlots.length === 0) {
+                      return (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-gray-500 text-center">
+                            Não há palestras cadastradas para os filtros selecionados
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return timeSlots.map((slot, index) => (
+                      <div key={index} className="mb-8">
+                        <div className="sticky top-0 bg-white z-10 py-2">
+                          <h3 className="text-sm font-medium text-muted-foreground">
+                            {slot.time}
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                          {slot.sessions
+                            .filter((session) => session.stage === stage.nome)
+                            .map((session) => (
+                              <SessionCard
+                                key={session.id}
+                                title={session.title}
+                                speaker={session.speaker}
+                                time={slot.time}
+                                duration={session.duration}
+                                track={session.track}
+                                stage={session.stage}
+                                location={session.location}
+                                onClick={() => setSelectedSession(session)}
+                              />
+                            ))}
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                        {slot.sessions
-                          .filter(
-                            (session) =>
-                              session.stage === stage.name &&
-                              session.track ===
-                                tracks.find((t) => t.id === selectedTrack)
-                                  ?.name,
-                          )
-                          .map((session) => (
-                            <SessionCard
-                              key={session.id}
-                              title={session.title}
-                              speaker={session.speaker}
-                              time={slot.time}
-                              duration={session.duration}
-                              track={session.track}
-                              stage={session.stage}
-                              location={session.location}
-                              onClick={() =>
-                                setSelectedSession({
-                                  ...session,
-                                  time: slot.time,
-                                })
-                              }
-                            />
-                          ))}
-                      </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </ScrollArea>
               </TabsContent>
             ))}
@@ -272,7 +409,25 @@ const EventSchedule = ({
 
           {selectedSession && (
             <SessionDetails
-              session={selectedSession}
+              session={{
+                title: selectedSession.title,
+                description: selectedSession.description || '',
+                speaker: {
+                  name: selectedSession.speaker.name,
+                  avatar: selectedSession.speaker.avatar,
+                  role: selectedSession.speaker.role,
+                  bio: selectedSession.speaker.bio || '',
+                  social: {
+                    twitter: '',
+                    linkedin: selectedSession.speaker.social.linkedin,
+                    website: selectedSession.speaker.social.instagram
+                  }
+                },
+                time: selectedSession.time || '',
+                duration: selectedSession.duration,
+                track: selectedSession.track,
+                location: selectedSession.location
+              }}
               onBack={() => setSelectedSession(null)}
             />
           )}

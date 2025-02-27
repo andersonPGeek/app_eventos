@@ -12,6 +12,7 @@ interface HomeProps {
     avatar: string;
   };
   isCheckedIn?: boolean;
+  selectedEventId?: string;
 }
 
 const Home = ({
@@ -21,6 +22,7 @@ const Home = ({
     avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=john",
   },
   isCheckedIn = false,
+  selectedEventId,
 }: HomeProps) => {
   return (
     <div className="min-h-screen bg-gray-100">
@@ -29,7 +31,7 @@ const Home = ({
       <main className="container mx-auto px-4 py-4 md:py-8 space-y-4 md:space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <EventSchedule />
+            <EventSchedule eventId={selectedEventId} />
           </div>
           <div className="lg:col-span-1">
             <CheckInSection isCheckedIn={isCheckedIn} />

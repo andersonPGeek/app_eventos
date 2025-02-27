@@ -45,11 +45,11 @@ function App() {
                 ) : !selectedEventId ? (
                   <EventList onSelectEvent={handleEventSelect} />
                 ) : (
-                  <EventSchedule />
+                  <EventSchedule eventId={selectedEventId} />
                 )
               }
             />
-            <Route path="/schedule" element={<EventSchedule />} />
+            <Route path="/schedule" element={<EventSchedule eventId={selectedEventId} />} />
             <Route path="/sponsors" element={<SponsorShowcase />} />
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/checkin" element={<CheckInSection />} />

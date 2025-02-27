@@ -132,7 +132,7 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
                 </div>
                 <Button
                   className="w-full"
-                  onClick={() => onSelectEvent(event.sessionId)}
+                  onClick={() => onSelectEvent(event.id)}
                 >
                   Participar desta data
                 </Button>
