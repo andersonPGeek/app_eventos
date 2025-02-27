@@ -2,9 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import ProductCard from "./ProductCard";
-import { Search, Filter, ShoppingCart } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../contexts/CartContext";
 import { API_ENDPOINTS } from "../config/api";
 import {
   Select,
@@ -28,12 +27,20 @@ interface MarketplaceProps {
   initialProducts?: Product[];
 }
 
+// Função auxiliar para converter URL de webp para jpg
+const convertWebpToJpg = (url: string): string => {
+  if (url.toLowerCase().endsWith('.webp')) {
+    return url.substring(0, url.length - 5) + '.jpg';
+  }
+  return url;
+};
+
 const Marketplace = ({ initialProducts }: MarketplaceProps) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const { items, addItem } = useCart();
-  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  //const { items, addItem } = useCart();
+  //const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
   
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>(['all']);
@@ -66,7 +73,13 @@ const Marketplace = ({ initialProducts }: MarketplaceProps) => {
         const produtosData = await produtosResponse.json();
         console.log('Produtos recebidos:', produtosData);
         
-        setProducts(produtosData);
+        // Converter URLs de imagens webp para jpg
+        const produtosConvertidos = produtosData.map((produto: Product) => ({
+          ...produto,
+          foto: convertWebpToJpg(produto.foto)
+        }));
+        
+        setProducts(produtosConvertidos);
       } catch (error) {
         console.error('Erro ao buscar dados:', error);
         setError(error instanceof Error ? error.message : 'Erro desconhecido');
@@ -105,21 +118,6 @@ const Marketplace = ({ initialProducts }: MarketplaceProps) => {
   return (
     <div className="w-full min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            size="icon"
-            className="relative"
-            onClick={() => navigate("/cart")}
-          >
-            <ShoppingCart className="h-5 w-5" />
-            {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </Button>
-        </div>
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <h2 className="text-xl md:text-2xl font-bold">Loja do Evento</h2>
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4">
@@ -173,12 +171,7 @@ const Marketplace = ({ initialProducts }: MarketplaceProps) => {
                 inStock={true}
                 onImageClick={() => navigate(`/product/${product.id}`)}
                 onAddToCart={() => {
-                  addItem({
-                    id: product.id,
-                    title: product.nome,
-                    price: product.valor,
-                    imageUrl: product.foto,
-                  });
+                  window.open(product.link, "_blank");
                 }}
               />
             ))}
