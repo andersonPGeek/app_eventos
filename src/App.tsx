@@ -77,7 +77,7 @@ function AppContent() {
               path="/checkin" 
               element={
                 isNavigationEnabled ? (
-                  <CheckInSection />
+                  <CheckInSection eventId={selectedEventId!} />
                 ) : (
                   <Navigate to="/" />
                 )

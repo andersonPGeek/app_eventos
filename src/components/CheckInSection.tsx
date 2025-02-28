@@ -15,6 +15,7 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const { userId } = useAuth();
   const scannerId = 'html5-qr-scanner';
 
@@ -37,23 +38,42 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
 
   useEffect(() => {
     if (isScanning && !hasCheckedIn) {
-      const scanner = new Html5QrcodeScanner(
-        scannerId,
-        { 
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
-        },
-        false
-      );
+      try {
+        console.log('Iniciando scanner...');
+        const scanner = new Html5QrcodeScanner(
+          scannerId,
+          { 
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+            defaultZoomValueIfSupported: 2
+          },
+          false
+        );
 
-      scanner.render(onScanSuccess, onScanError);
+        scanner.render(onScanSuccess, onScanError);
+        
+        // Verificar quando a câmera estiver pronta
+        const checkCameraReady = setInterval(() => {
+          const videoElement = document.querySelector('#html5-qr-scanner video');
+          if (videoElement) {
+            setIsCameraReady(true);
+            clearInterval(checkCameraReady);
+          }
+        }, 500);
 
-      return () => {
-        scanner.clear().catch(error => {
-          console.error('Erro ao limpar scanner:', error);
-        });
-      };
+        return () => {
+          clearInterval(checkCameraReady);
+          scanner.clear().catch(error => {
+            console.error('Erro ao limpar scanner:', error);
+          });
+        };
+      } catch (err) {
+        console.error('Erro ao inicializar scanner:', err);
+        setError('Erro ao inicializar a câmera. Por favor, verifique as permissões.');
+      }
     }
   }, [isScanning, hasCheckedIn]);
 
@@ -95,9 +115,10 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
     console.error('Erro na leitura do QR Code:', error);
   };
 
-  const startScanning = () => {
-    setIsScanning(true);
+  const startScanning = async () => {
     setError(null);
+    setIsScanning(true);
+    setIsCameraReady(false);
   };
 
   return (
@@ -124,21 +145,36 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
           <div className="space-y-4">
             <div className="text-center mb-4">
               <p className="text-sm text-gray-600">
-                Aponte a câmera para o QR Code do evento para realizar o check-in
+                {isScanning 
+                  ? "Aponte a câmera para o QR Code do evento"
+                  : "Clique no botão abaixo para iniciar o scanner"}
               </p>
             </div>
             
             {!isScanning ? (
-              <Button onClick={startScanning}>
+              <Button 
+                onClick={startScanning}
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <Camera className="w-4 h-4" />
                 Iniciar Scanner QR Code
               </Button>
             ) : (
-              <div>
-                <div id={scannerId} />
+              <div className="space-y-4">
+                <div id={scannerId} className="relative">
+                  {!isCameraReady && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                        <p className="text-sm text-gray-600">Iniciando câmera...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <Button 
                   onClick={() => setIsScanning(false)}
                   variant="outline"
-                  className="mt-4"
+                  className="w-full"
                 >
                   Cancelar Scanner
                 </Button>
