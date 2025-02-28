@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Check, Camera } from "lucide-react";
+import { Check } from "lucide-react";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import { QrReader } from 'react-qr-reader';
 import { useAuth } from "../contexts/AuthContext";
 import { API_ENDPOINTS } from "../config/api";
 
@@ -13,8 +13,7 @@ interface CheckInSectionProps {
 const CheckInSection = ({ eventId }: CheckInSectionProps) => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [scanning, setScanning] = useState(true);
   const { userId } = useAuth();
 
   // Verifica se o usuário já fez check-in neste evento
@@ -35,32 +34,6 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
 
     checkStatus();
   }, [userId, eventId]);
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraActive(true);
-        setError(null);
-      }
-    } catch (err) {
-      console.error('Erro ao acessar a câmera:', err);
-      setError('Não foi possível acessar a câmera. Verifique as permissões.');
-    }
-  };
-
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-      setIsCameraActive(false);
-    }
-  };
 
   const handleCheckIn = async () => {
     if (!userId || !eventId) {
@@ -83,7 +56,7 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
       if (response.ok) {
         setIsCheckedIn(true);
         setError(null);
-        stopCamera();
+        setScanning(false);
       } else {
         throw new Error('Falha ao realizar check-in');
       }
@@ -93,12 +66,21 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
     }
   };
 
-  // Limpa a câmera quando o componente é desmontado
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
+  const handleScan = (data: string | null) => {
+    if (data) {
+      console.log('QR Code detectado:', data);
+      if (data === `${API_ENDPOINTS.checkins}`) {
+        handleCheckIn();
+      } else {
+        setError('QR Code inválido');
+      }
+    }
+  };
+
+  const handleError = (err: Error) => {
+    console.error('Erro na leitura do QR code:', err);
+    setError('Erro ao acessar a câmera. Verifique as permissões.');
+  };
 
   return (
     <Card className="w-full max-w-[400px] bg-white mx-auto">
@@ -124,30 +106,21 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
           <div className="space-y-4">
             <div className="text-center mb-4">
               <p className="text-sm text-gray-600">
-                {isCameraActive 
-                  ? "Aponte a câmera para o QR Code do evento"
-                  : "Clique no botão abaixo para iniciar a câmera"}
+                Aponte a câmera para o QR Code do evento para realizar o check-in
               </p>
             </div>
             
-            {isCameraActive ? (
-              <div className="relative aspect-square max-w-[300px] mx-auto overflow-hidden rounded-lg">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <Button 
-                onClick={startCamera}
-                className="w-full"
-              >
-                <Camera className="w-4 h-4 mr-2" />
-                Iniciar Câmera
-              </Button>
-            )}
+            <div className="relative aspect-square max-w-[300px] mx-auto overflow-hidden rounded-lg">
+              <QrReader
+                onResult={(result) => {
+                  if (result) {
+                    handleScan(result.getText());
+                  }
+                }}
+                constraints={{ facingMode: 'environment' }}
+                containerStyle={{ width: '100%' }}
+              />
+            </div>
 
             {error && (
               <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">
