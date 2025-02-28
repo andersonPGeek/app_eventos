@@ -1,5 +1,6 @@
 import { Suspense, useState } from "react";
 import { CartProvider } from "./contexts/CartContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { useRoutes, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./components/home";
 import LoginPage from "./components/LoginPage";
@@ -13,21 +14,13 @@ import BottomNav from "./components/BottomNav";
 import ProductDetails from "./components/ProductDetails";
 import InstallPWAModal from "./components/InstallPWAModal";
 import useInstallPWA from "./hooks/useInstallPWA";
+import { useAuth } from "./contexts/AuthContext";
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+function AppContent() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isNavigationEnabled, setIsNavigationEnabled] = useState(false);
   const { isOpen, onClose, onInstall, isIOS } = useInstallPWA();
-
-  const handleLogin = (email: string, password: string) => {
-    // Credenciais fake para teste
-    if (email === "usuario@teste.com" && password === "123456") {
-      setIsAuthenticated(true);
-    } else {
-      alert("Email ou senha incorretos");
-    }
-  };
+  const { isAuthenticated } = useAuth();
 
   const handleEventSelect = (eventId: string) => {
     setSelectedEventId(eventId);
@@ -44,7 +37,7 @@ function App() {
               path="/"
               element={
                 !isAuthenticated ? (
-                  <LoginPage onLogin={handleLogin} />
+                  <LoginPage />
                 ) : (
                   <EventList onSelectEvent={handleEventSelect} />
                 )
@@ -112,6 +105,14 @@ function App() {
         </div>
       </CartProvider>
     </Suspense>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
