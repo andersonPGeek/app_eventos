@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Check, Camera } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useAuth } from "../contexts/AuthContext";
 import { API_ENDPOINTS } from "../config/api";
 
@@ -17,7 +17,7 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const { userId } = useAuth();
-  const scannerId = 'html5-qr-scanner';
+  const scannerId = 'qr-reader';
 
   useEffect(() => {
     // Verificar se o usuário já fez check-in
@@ -37,44 +37,59 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
   }, [eventId, userId]);
 
   useEffect(() => {
-    if (isScanning && !hasCheckedIn) {
-      try {
-        console.log('Iniciando scanner...');
-        const scanner = new Html5QrcodeScanner(
-          scannerId,
-          { 
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-            showTorchButtonIfSupported: true,
-            showZoomSliderIfSupported: true,
-            defaultZoomValueIfSupported: 2
-          },
-          false
-        );
+    let html5QrCode: Html5Qrcode | null = null;
 
-        scanner.render(onScanSuccess, onScanError);
-        
-        // Verificar quando a câmera estiver pronta
-        const checkCameraReady = setInterval(() => {
-          const videoElement = document.querySelector('#html5-qr-scanner video');
-          if (videoElement) {
+    const initializeScanner = async () => {
+      if (isScanning && !hasCheckedIn) {
+        try {
+          console.log('Iniciando scanner...');
+          
+          // Criar instância do scanner
+          html5QrCode = new Html5Qrcode(scannerId);
+          
+          // Listar câmeras disponíveis
+          const devices = await Html5Qrcode.getCameras();
+          console.log('Câmeras disponíveis:', devices);
+          
+          if (devices && devices.length > 0) {
+            const cameraId = devices[0].id;
+            console.log('Usando câmera:', cameraId);
+            
+            // Iniciar scanner
+            await html5QrCode.start(
+              cameraId,
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+              },
+              onScanSuccess,
+              onScanError
+            );
+            
+            console.log('Scanner iniciado com sucesso');
             setIsCameraReady(true);
-            clearInterval(checkCameraReady);
+            setError(null);
+          } else {
+            throw new Error('Nenhuma câmera encontrada');
           }
-        }, 500);
-
-        return () => {
-          clearInterval(checkCameraReady);
-          scanner.clear().catch(error => {
-            console.error('Erro ao limpar scanner:', error);
-          });
-        };
-      } catch (err) {
-        console.error('Erro ao inicializar scanner:', err);
-        setError('Erro ao inicializar a câmera. Por favor, verifique as permissões.');
+        } catch (err) {
+          console.error('Erro ao inicializar scanner:', err);
+          setError('Erro ao acessar a câmera. Por favor, verifique as permissões e tente novamente.');
+          setIsScanning(false);
+        }
       }
-    }
+    };
+
+    initializeScanner();
+
+    return () => {
+      if (html5QrCode) {
+        console.log('Limpando scanner...');
+        html5QrCode.stop().catch(error => {
+          console.error('Erro ao limpar scanner:', error);
+        });
+      }
+    };
   }, [isScanning, hasCheckedIn]);
 
   const onScanSuccess = async (decodedText: string) => {
@@ -116,9 +131,22 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
   };
 
   const startScanning = async () => {
-    setError(null);
-    setIsScanning(true);
-    setIsCameraReady(false);
+    try {
+      // Verificar permissão da câmera antes de iniciar
+      const permissionResult = await navigator.permissions.query({ name: 'camera' as PermissionName });
+      console.log('Status da permissão da câmera:', permissionResult.state);
+      
+      if (permissionResult.state === 'denied') {
+        throw new Error('Permissão da câmera negada. Por favor, habilite o acesso à câmera nas configurações do seu navegador.');
+      }
+      
+      setError(null);
+      setIsScanning(true);
+      setIsCameraReady(false);
+    } catch (err) {
+      console.error('Erro ao verificar permissão da câmera:', err);
+      setError('Erro ao acessar a câmera. Por favor, verifique as permissões.');
+    }
   };
 
   return (
@@ -163,7 +191,7 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
               <div className="space-y-4">
                 <div id={scannerId} className="relative">
                   {!isCameraReady && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg min-h-[250px]">
                       <div className="text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
                         <p className="text-sm text-gray-600">Iniciando câmera...</p>
