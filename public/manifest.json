@@ -94,5 +94,10 @@
       "sizes": "1280x720",
       "type": "image/jpg"
     }
-  ]
+  ],
+  "iarc_rating_id": "e10+",
+  "display_override": ["window-controls-overlay"],
+  "scope_extensions": [],
+  "handle_links": "auto",
+  "background_sync": true 
 } 
