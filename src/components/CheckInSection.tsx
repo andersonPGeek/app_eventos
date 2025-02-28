@@ -1,47 +1,72 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Check } from "lucide-react";
+import { Check, Camera } from "lucide-react";
 import { Badge } from "./ui/badge";
-import { QrReader } from 'react-qr-reader';
+import { Button } from "./ui/button";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { useAuth } from "../contexts/AuthContext";
 import { API_ENDPOINTS } from "../config/api";
 
 interface CheckInSectionProps {
-  eventId?: string;
+  eventId: string;
 }
 
 const CheckInSection = ({ eventId }: CheckInSectionProps) => {
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(true);
+  const [isScanning, setIsScanning] = useState(false);
   const { userId } = useAuth();
+  const scannerId = 'html5-qr-scanner';
 
-  // Verifica se o usuário já fez check-in neste evento
   useEffect(() => {
+    // Verificar se o usuário já fez check-in
     const checkStatus = async () => {
-      if (!userId || !eventId) return;
-      
       try {
         const response = await fetch(`${API_ENDPOINTS.checkins}/status/${eventId}/${userId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setIsCheckedIn(data.checkedIn);
-        }
-      } catch (error) {
-        console.error('Erro ao verificar status do check-in:', error);
+        const data = await response.json();
+        setHasCheckedIn(data.hasCheckedIn);
+      } catch (err) {
+        console.error('Erro ao verificar status do check-in:', err);
       }
     };
-
-    checkStatus();
-  }, [userId, eventId]);
-
-  const handleCheckIn = async () => {
-    if (!userId || !eventId) {
-      setError('Informações de usuário ou evento não disponíveis');
-      return;
+    
+    if (userId) {
+      checkStatus();
     }
+  }, [eventId, userId]);
 
+  useEffect(() => {
+    if (isScanning && !hasCheckedIn) {
+      const scanner = new Html5QrcodeScanner(
+        scannerId,
+        { 
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
+        },
+        false
+      );
+
+      scanner.render(onScanSuccess, onScanError);
+
+      return () => {
+        scanner.clear().catch(error => {
+          console.error('Erro ao limpar scanner:', error);
+        });
+      };
+    }
+  }, [isScanning, hasCheckedIn]);
+
+  const onScanSuccess = async (decodedText: string) => {
+    console.log('QR Code detectado:', decodedText);
+    
     try {
+      // Verifica se o QR code contém a URL esperada
+      if (!decodedText.includes('/api/checkins')) {
+        setError('QR Code inválido. Por favor, tente novamente.');
+        return;
+      }
+
       const response = await fetch(API_ENDPOINTS.checkins, {
         method: 'POST',
         headers: {
@@ -50,36 +75,29 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
         body: JSON.stringify({
           ID_usuario: userId,
           ID_evento: eventId
-        }),
+        })
       });
 
       if (response.ok) {
-        setIsCheckedIn(true);
+        setHasCheckedIn(true);
         setError(null);
-        setScanning(false);
+        setIsScanning(false);
       } else {
         throw new Error('Falha ao realizar check-in');
       }
-    } catch (error) {
-      console.error('Erro ao realizar check-in:', error);
-      setError('Não foi possível realizar o check-in. Tente novamente.');
+    } catch (err: any) {
+      console.error('Erro ao realizar check-in:', err);
+      setError(err.message || 'Erro ao realizar check-in');
     }
   };
 
-  const handleScan = (data: string | null) => {
-    if (data) {
-      console.log('QR Code detectado:', data);
-      if (data === `${API_ENDPOINTS.checkins}`) {
-        handleCheckIn();
-      } else {
-        setError('QR Code inválido');
-      }
-    }
+  const onScanError = (error: any) => {
+    console.error('Erro na leitura do QR Code:', error);
   };
 
-  const handleError = (err: Error) => {
-    console.error('Erro na leitura do QR code:', err);
-    setError('Erro ao acessar a câmera. Verifique as permissões.');
+  const startScanning = () => {
+    setIsScanning(true);
+    setError(null);
   };
 
   return (
@@ -87,7 +105,7 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           Check-in
-          {isCheckedIn && (
+          {hasCheckedIn && (
             <Badge variant="default" className="bg-green-500 text-white">
               <Check className="w-4 h-4 mr-1" />
               Check-in Realizado
@@ -96,7 +114,7 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isCheckedIn ? (
+        {hasCheckedIn ? (
           <div className="text-center p-6">
             <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
             <p className="text-lg font-medium text-green-700">Check-in realizado com sucesso!</p>
@@ -110,17 +128,22 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
               </p>
             </div>
             
-            <div className="relative aspect-square max-w-[300px] mx-auto overflow-hidden rounded-lg">
-              <QrReader
-                onResult={(result) => {
-                  if (result) {
-                    handleScan(result.getText());
-                  }
-                }}
-                constraints={{ facingMode: 'environment' }}
-                containerStyle={{ width: '100%' }}
-              />
-            </div>
+            {!isScanning ? (
+              <Button onClick={startScanning}>
+                Iniciar Scanner QR Code
+              </Button>
+            ) : (
+              <div>
+                <div id={scannerId} />
+                <Button 
+                  onClick={() => setIsScanning(false)}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  Cancelar Scanner
+                </Button>
+              </div>
+            )}
 
             {error && (
               <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">
