@@ -11,11 +11,14 @@ import CheckInSection from "./components/CheckInSection";
 import routes from "tempo-routes";
 import BottomNav from "./components/BottomNav";
 import ProductDetails from "./components/ProductDetails";
+import InstallPWAModal from "./components/InstallPWAModal";
+import useInstallPWA from "./hooks/useInstallPWA";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isNavigationEnabled, setIsNavigationEnabled] = useState(false);
+  const { isOpen, onClose, onInstall, isIOS } = useInstallPWA();
 
   const handleLogin = (email: string, password: string) => {
     // Credenciais fake para teste
@@ -100,6 +103,12 @@ function App() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
           {isAuthenticated && <BottomNav isEnabled={isNavigationEnabled} />}
+          <InstallPWAModal
+            isOpen={isOpen}
+            onClose={onClose}
+            onInstall={onInstall}
+            isIOS={isIOS}
+          />
         </div>
       </CartProvider>
     </Suspense>
