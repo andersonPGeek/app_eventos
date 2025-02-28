@@ -105,6 +105,18 @@
         "sizes": "512x512",
         "type": "image/jpg",
         "purpose": "maskable"
+      },
+      {
+        "src": "icons/icon-512x512-maskable.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "maskable"
+      },
+      {
+        "src": "icons/icon-512x512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any"
       }
   ],
   "shortcuts": [
@@ -147,5 +159,16 @@
   "display_override": ["window-controls-overlay"],
   "scope_extensions": [],
   "handle_links": "auto",
-  "background_sync": true 
+  "background_sync": true,
+  "edge_side_panel": {
+    "preferred": true
+    },
+    "file_handlers": {
+    ".txt": {
+        "action": "/",
+        "accept": {
+        "text/plain": [".txt"]
+        }
+    }
+    } 
 } 
