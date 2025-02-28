@@ -1,59 +1,61 @@
 {
+  "id": "https://appeventoslyfiti.vercel.app/",
   "name": "Sublime",
   "short_name": "Sublime",
+  "scope": "/",
   "description": "Aplicativo de gerenciamento de eventos",
-  "start_url": "https://appeventoslyfiti-zbw2s8ikh-andersons-projects-775b2f0c.vercel.app/",
+  "start_url": "https://appeventoslyfiti.vercel.app/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#7dd3fc",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "icons/icon-72x72.png",
+      "src": "icons/icon-72x72.jpg",
       "sizes": "72x72",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-96x96.png",
+      "src": "icons/icon-96x96.jpg",
       "sizes": "96x96",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-128x128.png",
+      "src": "icons/icon-128x128.jpg",
       "sizes": "128x128",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-144x144.png",
+      "src": "icons/icon-144x144.jpg",
       "sizes": "144x144",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-152x152.png",
+      "src": "icons/icon-152x152.jpg",
       "sizes": "152x152",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-192x192.png",
+      "src": "icons/icon-192x192.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-384x384.png",
+      "src": "icons/icon-384x384.jpg",
       "sizes": "384x384",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512x512.png",
+      "src": "icons/icon-512x512.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     }
   ],
@@ -62,18 +64,35 @@
       "name": "Ver Agenda",
       "short_name": "Agenda",
       "description": "Ver agenda do evento",
-      "url": "/schedule",
-      "icons": [{ "src": "icons/icon-192x192.png", "sizes": "192x192" }]
+      "url": "https://appeventoslyfiti.vercel.app/schedule",
+      "icons": [{ "src": "icons/icon-agenda192x192.jpg", "sizes": "192x192" }]
     },
     {
       "name": "Ver Patrocinadores",
       "short_name": "Patrocinadores",
       "description": "Ver patrocinadores do evento",
-      "url": "/sponsors",
-      "icons": [{ "src": "icons/icon-192x192.png", "sizes": "192x192" }]
+      "url": "https://appeventoslyfiti.vercel.app/sponsors",
+      "icons": [{ "src": "icons/icon-patrocinadores192x192.jpg", "sizes": "192x192" }]
     }
   ],
-  "categories": ["events", "business"],
+  "categories": ["business"],
   "lang": "pt-BR",
-  "dir": "ltr"
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "launch_handler": {
+    "client_mode": "auto"
+  },
+  "screenshots": [
+    {
+      "src": "screenshots/Capturar-1.png",
+      "sizes": "1280x720",
+      "type": "image/jpg"
+    },
+    {
+      "src": "screenshots/Capturar-2.png",
+      "sizes": "1280x720",
+      "type": "image/jpg"
+    }
+  ]
 } 
