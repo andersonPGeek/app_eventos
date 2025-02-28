@@ -2,7 +2,7 @@
   "name": "Sublime",
   "short_name": "Sublime",
   "description": "Aplicativo de gerenciamento de eventos",
-  "start_url": "/",
+  "start_url": "https://appeventoslyfiti-zbw2s8ikh-andersons-projects-775b2f0c.vercel.app/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#7dd3fc",
