@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Check, Camera } from "lucide-react";
+import { Check, MapPin } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Html5Qrcode } from "html5-qrcode";
 import { useAuth } from "../contexts/AuthContext";
 import { API_ENDPOINTS } from "../config/api";
 
@@ -11,16 +10,63 @@ interface CheckInSectionProps {
   eventId: string;
 }
 
+interface EventLocation {
+  latitude: number;
+  longitude: number;
+  cidade: string;
+  bairro: string;
+  logradouro: string;
+  numero: string;
+}
+
 const CheckInSection = ({ eventId }: CheckInSectionProps) => {
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [eventLocation, setEventLocation] = useState<EventLocation | null>(null);
   const { userId } = useAuth();
-  const scannerId = 'qr-reader';
 
+  // Função para calcular a distância entre dois pontos usando a fórmula de Haversine
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // Raio da Terra em metros
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distância em metros
+  };
+
+  // Buscar dados do evento
   useEffect(() => {
-    // Verificar se o usuário já fez check-in
+    const fetchEventData = async () => {
+      try {
+        const response = await fetch(`${API_ENDPOINTS.eventos}/${eventId}`);
+        const data = await response.json();
+        setEventLocation({
+          latitude: data.latitude,
+          longitude: data.longitude,
+          cidade: data.cidade,
+          bairro: data.bairro,
+          logradouro: data.logradouro,
+          numero: data.numero
+        });
+      } catch (err) {
+        console.error('Erro ao buscar dados do evento:', err);
+        setError('Não foi possível carregar os dados do evento.');
+      }
+    };
+
+    fetchEventData();
+  }, [eventId]);
+
+  // Verificar status do check-in
+  useEffect(() => {
     const checkStatus = async () => {
       try {
         const response = await fetch(`${API_ENDPOINTS.checkins}/status/${eventId}/${userId}`);
@@ -36,72 +82,39 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
     }
   }, [eventId, userId]);
 
-  useEffect(() => {
-    let html5QrCode: Html5Qrcode | null = null;
+  const handleCheckIn = async () => {
+    setLoading(true);
+    setError(null);
 
-    const initializeScanner = async () => {
-      if (isScanning && !hasCheckedIn) {
-        try {
-          console.log('Iniciando scanner...');
-          
-          // Criar instância do scanner
-          html5QrCode = new Html5Qrcode(scannerId);
-          
-          // Listar câmeras disponíveis
-          const devices = await Html5Qrcode.getCameras();
-          console.log('Câmeras disponíveis:', devices);
-          
-          if (devices && devices.length > 0) {
-            const cameraId = devices[0].id;
-            console.log('Usando câmera:', cameraId);
-            
-            // Iniciar scanner
-            await html5QrCode.start(
-              cameraId,
-              {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-              },
-              onScanSuccess,
-              onScanError
-            );
-            
-            console.log('Scanner iniciado com sucesso');
-            setIsCameraReady(true);
-            setError(null);
-          } else {
-            throw new Error('Nenhuma câmera encontrada');
-          }
-        } catch (err) {
-          console.error('Erro ao inicializar scanner:', err);
-          setError('Erro ao acessar a câmera. Por favor, verifique as permissões e tente novamente.');
-          setIsScanning(false);
-        }
-      }
-    };
-
-    initializeScanner();
-
-    return () => {
-      if (html5QrCode) {
-        console.log('Limpando scanner...');
-        html5QrCode.stop().catch(error => {
-          console.error('Erro ao limpar scanner:', error);
-        });
-      }
-    };
-  }, [isScanning, hasCheckedIn]);
-
-  const onScanSuccess = async (decodedText: string) => {
-    console.log('QR Code detectado:', decodedText);
-    
     try {
-      // Verifica se o QR code contém a URL esperada
-      if (!decodedText.includes('/api/checkins')) {
-        setError('QR Code inválido. Por favor, tente novamente.');
+      // Obter localização atual
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+      });
+
+      if (!eventLocation) {
+        throw new Error('Dados do evento não disponíveis');
+      }
+
+      const distance = calculateDistance(
+        position.coords.latitude,
+        position.coords.longitude,
+        eventLocation.latitude,
+        eventLocation.longitude
+      );
+
+      console.log('Distância até o evento:', distance, 'metros');
+
+      if (distance > 10) { // 10 metros de raio
+        setError(`Você precisa estar no local do evento para fazer check-in.\nEndereço do evento: ${eventLocation.logradouro}, ${eventLocation.numero} - ${eventLocation.bairro}, ${eventLocation.cidade}`);
         return;
       }
 
+      // Realizar check-in
       const response = await fetch(API_ENDPOINTS.checkins, {
         method: 'POST',
         headers: {
@@ -116,36 +129,20 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
       if (response.ok) {
         setHasCheckedIn(true);
         setError(null);
-        setIsScanning(false);
       } else {
         throw new Error('Falha ao realizar check-in');
       }
     } catch (err: any) {
-      console.error('Erro ao realizar check-in:', err);
-      setError(err.message || 'Erro ao realizar check-in');
-    }
-  };
-
-  const onScanError = (error: any) => {
-    console.error('Erro na leitura do QR Code:', error);
-  };
-
-  const startScanning = async () => {
-    try {
-      // Verificar permissão da câmera antes de iniciar
-      const permissionResult = await navigator.permissions.query({ name: 'camera' as PermissionName });
-      console.log('Status da permissão da câmera:', permissionResult.state);
-      
-      if (permissionResult.state === 'denied') {
-        throw new Error('Permissão da câmera negada. Por favor, habilite o acesso à câmera nas configurações do seu navegador.');
+      console.error('Erro:', err);
+      if (err.code === 1) { // Erro de permissão negada
+        setError('Por favor, permita o acesso à sua localização para realizar o check-in.');
+      } else if (err.code === 2) { // Erro de posição indisponível
+        setError('Não foi possível obter sua localização. Verifique se o GPS está ativado.');
+      } else {
+        setError(err.message || 'Erro ao realizar check-in');
       }
-      
-      setError(null);
-      setIsScanning(true);
-      setIsCameraReady(false);
-    } catch (err) {
-      console.error('Erro ao verificar permissão da câmera:', err);
-      setError('Erro ao acessar a câmera. Por favor, verifique as permissões.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -173,44 +170,35 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
           <div className="space-y-4">
             <div className="text-center mb-4">
               <p className="text-sm text-gray-600">
-                {isScanning 
-                  ? "Aponte a câmera para o QR Code do evento"
-                  : "Clique no botão abaixo para iniciar o scanner"}
+                Para realizar o check-in, você precisa estar no local do evento
               </p>
+              {eventLocation && (
+                <p className="text-xs text-gray-500 mt-2">
+                  {eventLocation.logradouro}, {eventLocation.numero} - {eventLocation.bairro}, {eventLocation.cidade}
+                </p>
+              )}
             </div>
             
-            {!isScanning ? (
-              <Button 
-                onClick={startScanning}
-                className="w-full flex items-center justify-center gap-2"
-              >
-                <Camera className="w-4 h-4" />
-                Iniciar Scanner QR Code
-              </Button>
-            ) : (
-              <div className="space-y-4">
-                <div id={scannerId} className="relative">
-                  {!isCameraReady && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg min-h-[250px]">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-                        <p className="text-sm text-gray-600">Iniciando câmera...</p>
-                      </div>
-                    </div>
-                  )}
+            <Button 
+              onClick={handleCheckIn}
+              className="w-full flex items-center justify-center gap-2"
+              disabled={loading || !eventLocation}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Verificando localização...
                 </div>
-                <Button 
-                  onClick={() => setIsScanning(false)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Cancelar Scanner
-                </Button>
-              </div>
-            )}
+              ) : (
+                <>
+                  <MapPin className="w-4 h-4" />
+                  Realizar Check-in
+                </>
+              )}
+            </Button>
 
             {error && (
-              <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">
+              <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded whitespace-pre-line">
                 {error}
               </div>
             )}
