@@ -118,9 +118,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = async (email: string) => {
     try {
-      console.log('Iniciando recuperação de senha...');
-      console.log('URL da API:', API_ENDPOINTS.auth.recuperarSenha);
-      console.log('Email enviado:', email);
+      console.log('🔄 Iniciando recuperação de senha no AuthContext...');
+      console.log('📍 URL da API:', API_ENDPOINTS.auth.recuperarSenha);
+      console.log('📧 Email a ser enviado:', email);
+      console.log('📦 Payload:', JSON.stringify({ Email: email }, null, 2));
 
       const response = await fetch(API_ENDPOINTS.auth.recuperarSenha, {
         method: 'POST',
@@ -130,17 +131,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         body: JSON.stringify({ Email: email }),
       });
 
-      console.log('Status da resposta:', response.status);
+      console.log('📥 Status da resposta:', response.status);
+      console.log('📥 Status text:', response.statusText);
+      
+      const responseData = await response.text();
+      console.log('📥 Corpo da resposta:', responseData);
 
       if (!response.ok) {
-        console.error('Erro na resposta da API:', response.status, response.statusText);
-        throw new Error('Erro ao enviar email de recuperação');
+        console.error('❌ Erro na resposta da API:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: responseData
+        });
+        throw new Error(`Erro ao enviar email de recuperação: ${response.status} - ${responseData}`);
       }
 
-      console.log('Email de recuperação enviado com sucesso');
+      console.log('✅ Email de recuperação enviado com sucesso');
       return true;
     } catch (error) {
-      console.error('Erro ao enviar email de recuperação:', error);
+      console.error('❌ Erro detalhado na recuperação de senha:', error);
+      console.error('Tipo do erro:', error instanceof Error ? 'Error' : typeof error);
+      if (error instanceof Error) {
+        console.error('Mensagem do erro:', error.message);
+        console.error('Stack trace:', error.stack);
+      }
       return false;
     }
   };

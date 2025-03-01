@@ -47,21 +47,38 @@ const LoginPage = () => {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔄 Iniciando processo de recuperação de senha...');
+    console.log('📧 Email informado:', email);
+    
     setError("");
     setSuccessMessage("");
     setLoading(true);
 
     try {
+      console.log('📤 Chamando função resetPassword do AuthContext...');
       const result = await resetPassword(email);
+      console.log('📥 Resultado da chamada resetPassword:', result);
+      
       if (result) {
+        console.log('✅ Email de recuperação enviado com sucesso!');
         setSuccessMessage("Email de recuperação enviado com sucesso! Por favor, verifique sua caixa de entrada.");
         setIsResettingPassword(false);
       } else {
+        console.error('❌ Falha ao enviar email de recuperação - resultado false');
         setError("Não foi possível enviar o email de recuperação. Por favor, tente novamente.");
       }
     } catch (error) {
+      console.error('❌ Erro detalhado na recuperação de senha:', error);
+      console.error('Tipo do erro:', error instanceof Error ? 'Error' : typeof error);
+      if (error instanceof Error) {
+        console.error('Mensagem do erro:', error.message);
+        console.error('Stack trace:', error.stack);
+      }
       setError("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.");
     } finally {
+      console.log('🏁 Finalizando processo de recuperação de senha');
+      console.log('Estado final - Erro:', error);
+      console.log('Estado final - Mensagem de sucesso:', successMessage);
       setLoading(false);
     }
   };
