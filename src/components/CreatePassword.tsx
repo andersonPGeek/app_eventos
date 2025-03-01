@@ -19,8 +19,12 @@ const CreatePassword = ({ email: firstAccessEmail }: CreatePasswordProps) => {
   const navigate = useNavigate();
   const { email: recoveryEmail } = useParams();
 
-  // Usa o email do primeiro acesso ou o email da recuperação de senha
+  // Decodifica o email da URL e usa o email do primeiro acesso ou o email da recuperação de senha
   const email = firstAccessEmail || (recoveryEmail ? decodeURIComponent(recoveryEmail) : '');
+
+  console.log('📧 Email recebido (primeiro acesso):', firstAccessEmail);
+  console.log('📧 Email recebido (recuperação):', recoveryEmail);
+  console.log('📧 Email decodificado:', email);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

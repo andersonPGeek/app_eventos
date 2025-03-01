@@ -121,7 +121,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log('🔄 Iniciando recuperação de senha no AuthContext...');
       console.log('📍 URL da API:', API_ENDPOINTS.auth.recuperarSenha);
       console.log('📧 Email a ser enviado:', email);
-      console.log('📦 Payload:', JSON.stringify({ Email: email }, null, 2));
+      
+      // Codifica o email para a URL
+      const encodedEmail = encodeURIComponent(email);
+      console.log('📧 Email codificado para URL:', encodedEmail);
 
       const response = await fetch(API_ENDPOINTS.auth.recuperarSenha, {
         method: 'POST',
