@@ -9,7 +9,6 @@ import EventSchedule from "./components/EventSchedule";
 import SponsorShowcase from "./components/SponsorShowcase";
 import Marketplace from "./components/Marketplace";
 import CheckInSection from "./components/CheckInSection";
-import routes from "tempo-routes";
 import BottomNav from "./components/BottomNav";
 import ProductDetails from "./components/ProductDetails";
 import InstallPWAModal from "./components/InstallPWAModal";
@@ -36,7 +35,6 @@ function AppContent() {
     <Suspense fallback={<p>Carregando...</p>}>
       <CartProvider>
         <div className="relative min-h-screen">
-          {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
           <Routes>
             <Route
               path="/"
