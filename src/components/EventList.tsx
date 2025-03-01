@@ -52,23 +52,52 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const navigate = useNavigate();
 
+  const CACHE_KEY = 'events_cache';
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos em millisegundos
+
+  const getCache = () => {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        console.log('📦 Usando dados do cache');
+        return data;
+      }
+      console.log('🕒 Cache expirado');
+    }
+    return null;
+  };
+
+  const setCache = (data: Event[]) => {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+  };
+
   const formatFirestoreDate = (timestamp: FirestoreTimestamp) => {
+    const startTime = performance.now();
     try {
       const date = new Date(timestamp._seconds * 1000);
-      return date.toLocaleDateString("pt-BR", {
+      const formattedDate = date.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
         weekday: 'long',
       });
+      console.log(`⏱️ Formatação de data: ${(performance.now() - startTime).toFixed(2)}ms`);
+      return formattedDate;
     } catch (error) {
-      console.error('Erro ao formatar data:', error);
+      console.error('❌ Erro ao formatar data:', error);
       return 'Data não disponível';
     }
   };
 
   const formatFullAddress = (event: EventData): string => {
-    return `${event.logradouro}, ${event.numero} - ${event.bairro}, ${event.cidade} - ${event.estado}, ${event.cep}`;
+    const startTime = performance.now();
+    const address = `${event.logradouro}, ${event.numero} - ${event.bairro}, ${event.cidade} - ${event.estado}, ${event.cep}`;
+    console.log(`⏱️ Formatação de endereço: ${(performance.now() - startTime).toFixed(2)}ms`);
+    return address;
   };
 
   const isIOS = () => {
@@ -92,20 +121,73 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
   };
 
   useEffect(() => {
-    getUserLocation();
+    console.time('🌍 Tempo total para obter localização');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.timeEnd('🌍 Tempo total para obter localização');
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          console.log('📍 Localização obtida:', position.coords);
+        },
+        (error) => {
+          console.timeEnd('🌍 Tempo total para obter localização');
+          console.error('❌ Erro ao obter localização:', error);
+        }
+      );
+    }
   }, []);
 
   useEffect(() => {
     const fetchEvents = async () => {
+      const totalStartTime = performance.now();
+      console.log('🚀 Iniciando busca de eventos...');
+      
       try {
-        console.log('Iniciando busca de eventos na URL:', API_ENDPOINTS.eventos);
-        const response = await fetch(API_ENDPOINTS.eventos);
-        console.log('Status da resposta:', response.status);
-        const data = await response.json();
-        console.log('Dados recebidos:', data);
+        // Tentar usar cache primeiro
+        const cachedEvents = getCache();
+        if (cachedEvents) {
+          setEvents(cachedEvents);
+          setLoading(false);
+          
+          // Atualizar em background
+          fetchAndUpdateEvents();
+          return;
+        }
+
+        await fetchAndUpdateEvents();
+      } catch (error) {
+        console.error('❌ Erro detalhado ao buscar eventos:', error);
+      } finally {
+        setLoading(false);
+        console.log(`⏱️ Tempo total de execução: ${(performance.now() - totalStartTime).toFixed(2)}ms`);
+      }
+    };
+
+    const fetchAndUpdateEvents = async () => {
+      // Medindo tempo da requisição
+      const fetchStartTime = performance.now();
+      console.log(`📡 Fazendo requisição para: ${API_ENDPOINTS.eventos}`);
+      const response = await fetch(API_ENDPOINTS.eventos);
+      console.log(`⏱️ Tempo de requisição: ${(performance.now() - fetchStartTime).toFixed(2)}ms`);
+      
+      // Medindo tempo do parse JSON
+      const jsonStartTime = performance.now();
+      const data = await response.json();
+      console.log(`⏱️ Tempo de parse JSON: ${(performance.now() - jsonStartTime).toFixed(2)}ms`);
+      console.log(`📦 Quantidade de eventos recebidos: ${data.length}`);
+      
+      // Medindo tempo da formatação dos dados
+      const formatStartTime = performance.now();
+      const formattedEvents = data.flatMap((event: EventData) => {
+        console.log(`🔄 Processando evento: ${event.nomeEvento}`);
+        const eventStartTime = performance.now();
         
-        const formattedEvents = data.flatMap((event: EventData) => {
-          return event.dataEvento.map((timestamp, index) => ({
+        const formattedSessions = event.dataEvento.map((timestamp, index) => {
+          const sessionStartTime = performance.now();
+          const formatted = {
             id: event.id,
             sessionId: `${event.id}-${index}`,
             title: event.nomeEvento,
@@ -116,18 +198,23 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
             imageUrl: event.foto,
             latitude: event.latitude,
             longitude: event.longitude
-          }));
+          };
+          console.log(`⏱️ Tempo de formatação da sessão ${index + 1}: ${(performance.now() - sessionStartTime).toFixed(2)}ms`);
+          return formatted;
         });
+        
+        console.log(`⏱️ Tempo total de processamento do evento: ${(performance.now() - eventStartTime).toFixed(2)}ms`);
+        return formattedSessions;
+      });
 
-        console.log('Eventos formatados com múltiplas datas:', formattedEvents);
-        setEvents(formattedEvents);
-      } catch (error) {
-        console.error('Erro detalhado ao buscar eventos:', error);
-      } finally {
-        setLoading(false);
-      }
+      console.log(`⏱️ Tempo total de formatação: ${(performance.now() - formatStartTime).toFixed(2)}ms`);
+      console.log(`📊 Total de sessões formatadas: ${formattedEvents.length}`);
+      
+      setCache(formattedEvents);
+      setEvents(formattedEvents);
     };
 
+    console.log('🔄 Iniciando ciclo de busca de eventos');
     fetchEvents();
   }, []);
 
@@ -164,7 +251,26 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
   };
 
   if (loading) {
-    return <div className="text-center p-4">Carregando eventos...</div>;
+    return (
+      <div className="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+          <p className="text-lg text-gray-600">Carregando eventos...</p>
+          <p className="text-sm text-gray-400">Isso pode levar alguns segundos</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <p className="text-lg text-gray-600">Nenhum evento encontrado</p>
+          <p className="text-sm text-gray-400">Tente novamente mais tarde</p>
+        </div>
+      </div>
+    );
   }
 
   return (
