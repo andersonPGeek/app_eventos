@@ -140,6 +140,179 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
     }
   }, []);
 
+  const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      // Primeiro tenta com o endereço completo
+      const searchQuery = `${address}, Brasil`;
+      console.log('🔍 Tentando geocodificação para:', searchQuery);
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1`,
+        {
+          headers: {
+            'Accept-Language': 'pt-BR',
+            'User-Agent': 'AppEventos/1.0'
+          }
+        }
+      );
+      
+      const data = await response.json();
+      console.log('📡 Resposta da API:', data);
+      
+      if (data && data[0]) {
+        const result = {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon)
+        };
+        console.log('✅ Coordenadas encontradas:', result);
+        return result;
+      }
+
+      // Se não encontrou, tenta só com cidade e estado
+      const cityStateMatch = address.match(/([^,]+),\s*([^-]+)\s*-\s*([^,]+)/);
+      if (cityStateMatch) {
+        const cidade = cityStateMatch[2].trim();
+        const estado = cityStateMatch[3].trim();
+        const fallbackQuery = `${cidade}, ${estado}, Brasil`;
+        
+        console.log('🔄 Tentando com cidade/estado:', fallbackQuery);
+
+        const fallbackResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&limit=1`,
+          {
+            headers: {
+              'Accept-Language': 'pt-BR',
+              'User-Agent': 'AppEventos/1.0'
+            }
+          }
+        );
+        
+        const fallbackData = await fallbackResponse.json();
+        
+        if (fallbackData && fallbackData[0]) {
+          const result = {
+            lat: parseFloat(fallbackData[0].lat),
+            lng: parseFloat(fallbackData[0].lon)
+          };
+          console.log('✅ Coordenadas encontradas (fallback):', result);
+          return result;
+        }
+      }
+
+      console.log('❌ Nenhum resultado encontrado para o endereço');
+      return null;
+    } catch (error) {
+      console.error('❌ Erro na geocodificação:', error);
+      return null;
+    }
+  };
+
+  const fetchAndUpdateEvents = async () => {
+    const fetchStartTime = performance.now();
+    console.log(`📡 Fazendo requisição para: ${API_ENDPOINTS.eventos}`);
+    const response = await fetch(API_ENDPOINTS.eventos);
+    console.log(`⏱️ Tempo de requisição: ${(performance.now() - fetchStartTime).toFixed(2)}ms`);
+    
+    const jsonStartTime = performance.now();
+    const data = await response.json();
+    console.log(`⏱️ Tempo de parse JSON: ${(performance.now() - jsonStartTime).toFixed(2)}ms`);
+    console.log(`📦 Quantidade de eventos recebidos: ${data.length}`);
+    
+    const formatStartTime = performance.now();
+    const formattedEvents = await Promise.all(data.flatMap(async (event: EventData) => {
+      console.log(`🔄 Processando evento: ${event.nomeEvento}`, {
+        latitude: event.latitude,
+        longitude: event.longitude,
+        tipo_lat: typeof event.latitude,
+        tipo_long: typeof event.longitude
+      });
+      const eventStartTime = performance.now();
+      
+      let coordinates = { lat: 0, lng: 0 };
+      
+      // Verificar se o evento já tem coordenadas válidas
+      if (event.latitude !== undefined && event.longitude !== undefined) {
+        const lat = Number(event.latitude);
+        const lng = Number(event.longitude);
+        
+        console.log('📊 Valores convertidos:', {
+          lat: lat,
+          lng: lng,
+          isNaN_lat: isNaN(lat),
+          isNaN_lng: isNaN(lng)
+        });
+
+        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+          coordinates = { lat, lng };
+          console.log('📍 Usando coordenadas existentes do evento:', coordinates);
+        } else {
+          console.log('⚠️ Coordenadas existentes inválidas:', {
+            latitude_original: event.latitude,
+            longitude_original: event.longitude,
+            latitude_convertida: lat,
+            longitude_convertida: lng
+          });
+        }
+      }
+      
+      // Se não tiver coordenadas válidas, tentar geocodificação
+      if (coordinates.lat === 0 || coordinates.lng === 0) {
+        const address = formatFullAddress(event);
+        console.log('🔍 Tentando geocodificação para endereço:', address);
+        const geocoded = await geocodeAddress(address);
+        if (geocoded) {
+          coordinates = geocoded;
+          console.log('📍 Coordenadas obtidas por geocodificação:', coordinates);
+        } else {
+          console.warn('⚠️ Geocodificação falhou para:', event.nomeEvento);
+        }
+      }
+
+      // Validação final das coordenadas
+      if (coordinates.lat === 0 || coordinates.lng === 0 || 
+          isNaN(coordinates.lat) || isNaN(coordinates.lng)) {
+        console.error('❌ Coordenadas inválidas para o evento:', {
+          evento: event.nomeEvento,
+          coordenadas: coordinates,
+          endereco: formatFullAddress(event)
+        });
+      }
+      
+      const formattedSessions = event.dataEvento.map((timestamp, index) => ({
+        id: event.id,
+        sessionId: `${event.id}-${index}`,
+        title: event.nomeEvento,
+        date: formatFirestoreDate(timestamp),
+        location: `${event.cidade}, ${event.estado}`,
+        fullAddress: formatFullAddress(event),
+        attendees: event.participantes,
+        imageUrl: event.foto,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng
+      }));
+      
+      console.log(`⏱️ Tempo total de processamento do evento: ${(performance.now() - eventStartTime).toFixed(2)}ms`);
+      return formattedSessions;
+    }));
+
+    const flattenedEvents = formattedEvents.flat();
+    console.log(`⏱️ Tempo total de formatação: ${(performance.now() - formatStartTime).toFixed(2)}ms`);
+    console.log(`📊 Total de sessões formatadas: ${flattenedEvents.length}`);
+    
+    // Validar se todos os eventos têm coordenadas válidas
+    const eventsWithoutCoordinates = flattenedEvents.filter(
+      event => !event.latitude || !event.longitude || 
+               event.latitude === 0 || event.longitude === 0
+    );
+    
+    if (eventsWithoutCoordinates.length > 0) {
+      console.warn('⚠️ Eventos sem coordenadas válidas:', eventsWithoutCoordinates.map(e => e.title));
+    }
+    
+    setCache(flattenedEvents);
+    setEvents(flattenedEvents);
+  };
+
   useEffect(() => {
     const fetchEvents = async () => {
       const totalStartTime = performance.now();
@@ -164,54 +337,6 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
         setLoading(false);
         console.log(`⏱️ Tempo total de execução: ${(performance.now() - totalStartTime).toFixed(2)}ms`);
       }
-    };
-
-    const fetchAndUpdateEvents = async () => {
-      // Medindo tempo da requisição
-      const fetchStartTime = performance.now();
-      console.log(`📡 Fazendo requisição para: ${API_ENDPOINTS.eventos}`);
-      const response = await fetch(API_ENDPOINTS.eventos);
-      console.log(`⏱️ Tempo de requisição: ${(performance.now() - fetchStartTime).toFixed(2)}ms`);
-      
-      // Medindo tempo do parse JSON
-      const jsonStartTime = performance.now();
-      const data = await response.json();
-      console.log(`⏱️ Tempo de parse JSON: ${(performance.now() - jsonStartTime).toFixed(2)}ms`);
-      console.log(`📦 Quantidade de eventos recebidos: ${data.length}`);
-      
-      // Medindo tempo da formatação dos dados
-      const formatStartTime = performance.now();
-      const formattedEvents = data.flatMap((event: EventData) => {
-        console.log(`🔄 Processando evento: ${event.nomeEvento}`);
-        const eventStartTime = performance.now();
-        
-        const formattedSessions = event.dataEvento.map((timestamp, index) => {
-          const sessionStartTime = performance.now();
-          const formatted = {
-            id: event.id,
-            sessionId: `${event.id}-${index}`,
-            title: event.nomeEvento,
-            date: formatFirestoreDate(timestamp),
-            location: `${event.cidade}, ${event.estado}`,
-            fullAddress: formatFullAddress(event),
-            attendees: event.participantes,
-            imageUrl: event.foto,
-            latitude: event.latitude,
-            longitude: event.longitude
-          };
-          console.log(`⏱️ Tempo de formatação da sessão ${index + 1}: ${(performance.now() - sessionStartTime).toFixed(2)}ms`);
-          return formatted;
-        });
-        
-        console.log(`⏱️ Tempo total de processamento do evento: ${(performance.now() - eventStartTime).toFixed(2)}ms`);
-        return formattedSessions;
-      });
-
-      console.log(`⏱️ Tempo total de formatação: ${(performance.now() - formatStartTime).toFixed(2)}ms`);
-      console.log(`📊 Total de sessões formatadas: ${formattedEvents.length}`);
-      
-      setCache(formattedEvents);
-      setEvents(formattedEvents);
     };
 
     console.log('🔄 Iniciando ciclo de busca de eventos');
@@ -240,8 +365,13 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
       return;
     }
 
+    if (!event.latitude || !event.longitude) {
+      alert('Não foi possível obter as coordenadas do evento. Por favor, tente novamente mais tarde.');
+      return;
+    }
+
     const uberUrl = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${userLocation.latitude}&pickup[longitude]=${userLocation.longitude}&pickup[formatted_address]=Localização%20Atual&dropoff[latitude]=${event.latitude}&dropoff[longitude]=${event.longitude}&dropoff[formatted_address]=${encodeURIComponent(event.title)}`;
-    
+    console.log('🚗 URL do Uber:', uberUrl);
     window.open(uberUrl, '_blank');
   };
 
