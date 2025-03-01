@@ -119,10 +119,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const resetPassword = async (email: string) => {
     try {
       console.log('Iniciando recuperação de senha...');
-      console.log('URL da API:', API_ENDPOINTS.auth.resetarSenha);
+      console.log('URL da API:', API_ENDPOINTS.auth.recuperarSenha);
       console.log('Email enviado:', email);
 
-      const response = await fetch(API_ENDPOINTS.auth.resetarSenha, {
+      const response = await fetch(API_ENDPOINTS.auth.recuperarSenha, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

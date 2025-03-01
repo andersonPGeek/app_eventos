@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
     auth: {
         login: `${API_BASE_URL}/api/auth/login`,
         criarSenha: `${API_BASE_URL}/api/auth/criar-senha`,
-        resetarSenha: `${API_BASE_URL}/api/auth/resetar-senha`
+        resetarSenha: `${API_BASE_URL}/api/auth/resetar-senha`,
+        recuperarSenha: `${API_BASE_URL}/api/auth/recuperar-senha`
     }
 }; 
