@@ -34,7 +34,7 @@ const Home = ({
             <EventSchedule eventId={selectedEventId} />
           </div>
           <div className="lg:col-span-1">
-            <CheckInSection isCheckedIn={isCheckedIn} />
+            <CheckInSection eventId={selectedEventId || ''} isCheckedIn={isCheckedIn} />
           </div>
         </div>
 

@@ -79,11 +79,17 @@ interface EventScheduleProps {
   eventId: string;
 }
 
+interface EventDates {
+  dataInicio: FirestoreTimestamp;
+  dataFim: FirestoreTimestamp;
+}
+
 const EventSchedule = ({ eventId }: EventScheduleProps) => {
   const [stages, setStages] = useState<Stage[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [eventDates, setEventDates] = useState<EventDates | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTrack, setSelectedTrack] = useState<string>("");
   const [selectedStage, setSelectedStage] = useState<string>("");
@@ -106,53 +112,57 @@ const EventSchedule = ({ eventId }: EventScheduleProps) => {
     }
   };
 
-  // Verificar se eventId está presente
+  // Buscar dados do evento incluindo as datas
   useEffect(() => {
-    console.log('EventSchedule - Iniciando com eventId:', eventId);
-    if (!eventId) {
-      console.warn('EventSchedule - ID do evento não fornecido');
-      setError('ID do evento não fornecido');
-      setIsLoadingInitial(false);
-      return;
-    }
-
     const fetchEventData = async () => {
-      console.log('EventSchedule - Iniciando busca de dados do evento');
       try {
         setIsLoadingInitial(true);
-        console.log('EventSchedule - Fazendo requisição para:', `${API_ENDPOINTS.agenda}/${eventId}`);
-        const response = await fetch(`${API_ENDPOINTS.agenda}/${eventId}`);
-        console.log('EventSchedule - Status da resposta:', response.status);
         
-        if (!response.ok) {
-          throw new Error(`Erro ao buscar dados do evento: ${response.status}`);
+        // Buscar dados do evento (datas)
+        const eventResponse = await fetch(`${API_ENDPOINTS.eventos}/${eventId}`);
+        if (!eventResponse.ok) {
+          throw new Error('Falha ao buscar dados do evento');
         }
-        const data = await response.json();
-        console.log('EventSchedule - Dados do evento recebidos:', data);
-        console.log('EventSchedule - Trilhas recebidas:', data.trilhas?.length || 0);
-        console.log('EventSchedule - Palcos recebidos:', data.palcos?.length || 0);
+        const eventData = await eventResponse.json();
+        
+        if (eventData.dataInicio && eventData.dataFim) {
+          setEventDates({
+            dataInicio: eventData.dataInicio,
+            dataFim: eventData.dataFim
+          });
+          setSelectedDate(new Date(eventData.dataInicio._seconds * 1000));
+        }
 
-        setTracks(data.trilhas || []);
-        setStages(data.palcos || []);
-        
-        if (data.trilhas?.length > 0) {
-          console.log('EventSchedule - Selecionando primeira trilha:', data.trilhas[0].id);
-          setSelectedTrack(data.trilhas[0].id);
+        // Buscar dados da agenda (trilhas e palcos)
+        const agendaResponse = await fetch(`${API_ENDPOINTS.agenda}/${eventId}`);
+        if (!agendaResponse.ok) {
+          throw new Error('Falha ao buscar dados da agenda');
         }
-        if (data.palcos?.length > 0) {
-          console.log('EventSchedule - Selecionando primeiro palco:', data.palcos[0].id);
-          setSelectedStage(data.palcos[0].id);
+        const agendaData = await agendaResponse.json();
+        
+        setTracks(agendaData.trilhas || []);
+        setStages(agendaData.palcos || []);
+        
+        if (agendaData.trilhas?.length > 0) {
+          setSelectedTrack(agendaData.trilhas[0].id);
+        }
+        if (agendaData.palcos?.length > 0) {
+          setSelectedStage(agendaData.palcos[0].id);
         }
       } catch (error) {
-        console.error('EventSchedule - Erro ao buscar dados:', error);
+        console.error('Erro ao buscar dados:', error);
         setError(error instanceof Error ? error.message : 'Erro desconhecido');
       } finally {
         setIsLoadingInitial(false);
-        console.log('EventSchedule - Finalizada busca inicial de dados');
       }
     };
 
-    fetchEventData();
+    if (eventId) {
+      fetchEventData();
+    } else {
+      setError('ID do evento não fornecido');
+      setIsLoadingInitial(false);
+    }
   }, [eventId]);
 
   // Buscar detalhes das palestras quando trilha ou palco são selecionados
@@ -281,29 +291,39 @@ const EventSchedule = ({ eventId }: EventScheduleProps) => {
 
             <div className={`space-y-4 ${isFiltersOpen ? "block" : "hidden"} md:block`}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Data</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                      >
-                        <CalendarIcon className="w-4 h-4 mr-2" />
-                        {format(selectedDate, "d MMM yyyy", { locale: ptBR })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => date && setSelectedDate(date)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                {eventDates?.dataInicio && eventDates?.dataFim && 
+                  new Date(eventDates.dataInicio._seconds * 1000).getTime() !== 
+                  new Date(eventDates.dataFim._seconds * 1000).getTime() && (
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Data</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                        >
+                          <CalendarIcon className="w-4 h-4 mr-2" />
+                          {format(selectedDate, "d MMM yyyy", { locale: ptBR })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(date) => date && setSelectedDate(date)}
+                          disabled={(date) => {
+                            if (!eventDates?.dataInicio || !eventDates?.dataFim) return true;
+                            const start = new Date(eventDates.dataInicio._seconds * 1000);
+                            const end = new Date(eventDates.dataFim._seconds * 1000);
+                            return date < start || date > end;
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-sm font-medium mb-1 block">
@@ -378,7 +398,7 @@ const EventSchedule = ({ eventId }: EventScheduleProps) => {
                     return timeSlots.map((slot, index) => (
                       <div key={index} className="mb-8">
                         <div className="sticky top-0 bg-white z-10 py-2">
-                          <h3 className="text-sm font-medium text-muted-foreground">
+                          <h3 className="text-lg font-semibold text-primary">
                             {slot.time}
                           </h3>
                         </div>

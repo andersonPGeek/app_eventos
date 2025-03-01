@@ -8,6 +8,7 @@ import { API_ENDPOINTS } from "../config/api";
 
 interface CheckInSectionProps {
   eventId: string;
+  isCheckedIn?: boolean;
 }
 
 interface EventLocation {
@@ -19,8 +20,19 @@ interface EventLocation {
   numero: string;
 }
 
-const CheckInSection = ({ eventId }: CheckInSectionProps) => {
+interface CheckInData {
+  id: string;
+  ID_evento: string;
+  ID_usuario: string;
+  dataCheckin: {
+    _seconds: number;
+    _nanoseconds: number;
+  };
+}
+
+const CheckInSection: React.FC<CheckInSectionProps> = ({ eventId, isCheckedIn }) => {
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
+  const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [eventLocation, setEventLocation] = useState<EventLocation | null>(null);
@@ -65,22 +77,35 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
     fetchEventData();
   }, [eventId]);
 
-  // Verificar status do check-in
+  // Verificar se já existe check-in
   useEffect(() => {
-    const checkStatus = async () => {
+    const fetchCheckIns = async () => {
       try {
-        const response = await fetch(`${API_ENDPOINTS.checkins}/status/${eventId}/${userId}`);
-        const data = await response.json();
-        setHasCheckedIn(data.hasCheckedIn);
+        const response = await fetch(API_ENDPOINTS.checkins);
+        const checkIns: CheckInData[] = await response.json();
+        
+        const existingCheckIn = checkIns.find(
+          checkIn => checkIn.ID_evento === eventId && checkIn.ID_usuario === userId
+        );
+
+        if (existingCheckIn) {
+          setHasCheckedIn(true);
+          const date = new Date(
+            existingCheckIn.dataCheckin._seconds * 1000 +
+            existingCheckIn.dataCheckin._nanoseconds / 1000000
+          );
+          setCheckInDate(date);
+        }
       } catch (err) {
-        console.error('Erro ao verificar status do check-in:', err);
+        console.error('Erro ao verificar check-ins:', err);
+        setError('Não foi possível verificar o status do check-in.');
       }
     };
-    
-    if (userId) {
-      checkStatus();
+
+    if (userId && eventId) {
+      fetchCheckIns();
     }
-  }, [eventId, userId]);
+  }, [userId, eventId]);
 
   const handleCheckIn = async () => {
     setLoading(true);
@@ -164,7 +189,11 @@ const CheckInSection = ({ eventId }: CheckInSectionProps) => {
           <div className="text-center p-6">
             <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
             <p className="text-lg font-medium text-green-700">Check-in realizado com sucesso!</p>
-            <p className="text-sm text-gray-500 mt-2">Você já está registrado neste evento.</p>
+            {checkInDate && (
+              <p className="text-sm text-gray-500 mt-2">
+                Realizado em: {checkInDate.toLocaleDateString('pt-BR')} às {checkInDate.toLocaleTimeString('pt-BR')}
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-4">

@@ -41,37 +41,12 @@ const SessionCard = ({
 }: SessionCardProps) => {
   return (
     <Card
-      className="w-full max-w-[280px] h-[160px] bg-white hover:shadow-lg transition-shadow cursor-pointer"
+      className="w-full max-w-[280px] bg-white hover:shadow-lg transition-shadow cursor-pointer"
       onClick={onClick}
     >
       <CardHeader className="p-4 pb-2">
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-1">
-            <Badge variant="secondary" className="text-[10px] h-5">
-              {stage}
-            </Badge>
-            <Badge variant="outline" className="text-[10px] h-5">
-              {track}
-            </Badge>
-          </div>
-          <div>
-            <CardTitle className="text-sm font-semibold line-clamp-1">
-              {title}
-            </CardTitle>
-            <CardDescription className="text-xs mt-1">
-              <div className="flex items-center gap-2">
-                <Clock className="w-3 h-3" />
-                <span>
-                  {time} • {duration}
-                </span>
-              </div>
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="flex items-center gap-3 mb-2">
-          <Avatar className="w-8 h-8">
+        <div className="flex items-start gap-3">
+          <Avatar className="w-14 h-14 shrink-0">
             <AvatarImage src={speaker.avatar} alt={speaker.name} />
             <AvatarFallback>
               {speaker.name
@@ -81,15 +56,39 @@ const SessionCard = ({
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{speaker.name}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {speaker.role}
-            </p>
+            <div className="flex flex-wrap gap-1 mb-1.5">
+              <Badge variant="secondary" className="text-[10px] h-5">
+                {stage}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] h-5">
+                {track}
+              </Badge>
+            </div>
+            <CardTitle className="text-sm font-semibold line-clamp-2 mb-1">
+              {title}
+            </CardTitle>
+            <div className="flex items-center gap-1.5 text-sm font-medium text-primary">
+              <Clock className="w-4 h-4 shrink-0" />
+              <span>{time}</span>
+              <span className="text-xs text-muted-foreground">({duration})</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <MapPin className="w-3 h-3" />
-          <span>{location}</span>
+      </CardHeader>
+      <CardContent className="p-4 pt-2">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{speaker.name}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {speaker.role}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{location}</span>
+          </div>
         </div>
       </CardContent>
     </Card>
