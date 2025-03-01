@@ -8,9 +8,9 @@ import {
   ArrowLeft,
   Clock,
   MapPin,
-  Twitter,
   Linkedin,
-  Globe,
+  Facebook,
+  Instagram
 } from "lucide-react";
 
 interface SessionDetailsProps {
@@ -23,9 +23,9 @@ interface SessionDetailsProps {
       role: string;
       bio: string;
       social: {
-        twitter?: string;
         linkedin?: string;
-        website?: string;
+        facebook?: string;
+        instagram?: string;
       };
     };
     time: string;
@@ -47,9 +47,7 @@ const SessionDetails = ({
       role: "CEO, EventTech",
       bio: "João Silva é um líder visionário na indústria de eventos com mais de 15 anos de experiência. Ele já liderou a transformação digital de várias empresas do setor.",
       social: {
-        twitter: "https://twitter.com/joaosilva",
         linkedin: "https://linkedin.com/in/joaosilva",
-        website: "https://joaosilva.com",
       },
     },
     time: "09:00",
@@ -117,38 +115,56 @@ const SessionDetails = ({
                     </p>
                   </div>
                   <p className="text-sm">{session.speaker.bio}</p>
-                  <div className="flex gap-2">
-                    {session.speaker.social.twitter && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          window.open(session.speaker.social.twitter, "_blank")
-                        }
-                      >
-                        <Twitter className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {session.speaker.social.linkedin && (
+                  <div className="flex gap-3">
+                    {session.speaker.social?.linkedin && session.speaker.social.linkedin.trim() !== '' && (
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() =>
                           window.open(session.speaker.social.linkedin, "_blank")
                         }
+                        title="LinkedIn"
+                        className="p-1 h-auto"
                       >
-                        <Linkedin className="h-4 w-4" />
+                        <img 
+                          src="/icons/linkedin.png" 
+                          alt="LinkedIn"
+                          className="w-6 h-6"
+                        />
                       </Button>
                     )}
-                    {session.speaker.social.website && (
+                    {session.speaker.social?.instagram && session.speaker.social.instagram.trim() !== '' && (
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() =>
-                          window.open(session.speaker.social.website, "_blank")
+                          window.open(session.speaker.social.instagram, "_blank")
                         }
+                        title="Instagram"
+                        className="p-1 h-auto"
                       >
-                        <Globe className="h-4 w-4" />
+                        <img 
+                          src="/icons/instagram.png" 
+                          alt="Instagram"
+                          className="w-6 h-6"
+                        />
+                      </Button>
+                    )}
+                    {session.speaker.social?.facebook && session.speaker.social.facebook.trim() !== '' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          window.open(session.speaker.social.facebook, "_blank")
+                        }
+                        title="Facebook"
+                        className="p-1 h-auto"
+                      >
+                        <img 
+                          src="/icons/facebook.png" 
+                          alt="Facebook"
+                          className="w-6 h-6"
+                        />
                       </Button>
                     )}
                   </div>

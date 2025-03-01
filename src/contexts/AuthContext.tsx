@@ -6,6 +6,7 @@ interface AuthContextType {
   userId: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; requirePasswordCreation: boolean }>;
   createPassword: (email: string, password: string) => Promise<boolean>;
+  resetPassword: (email: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -115,6 +116,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      console.log('Iniciando recuperação de senha...');
+      console.log('URL da API:', API_ENDPOINTS.auth.resetarSenha);
+      console.log('Email enviado:', email);
+
+      const response = await fetch(API_ENDPOINTS.auth.resetarSenha, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ Email: email }),
+      });
+
+      console.log('Status da resposta:', response.status);
+
+      if (!response.ok) {
+        console.error('Erro na resposta da API:', response.status, response.statusText);
+        throw new Error('Erro ao enviar email de recuperação');
+      }
+
+      console.log('Email de recuperação enviado com sucesso');
+      return true;
+    } catch (error) {
+      console.error('Erro ao enviar email de recuperação:', error);
+      return false;
+    }
+  };
+
   const logout = () => {
     console.log('Realizando logout...');
     setIsAuthenticated(false);
@@ -125,7 +155,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userId, login, createPassword, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      userId, 
+      login, 
+      createPassword, 
+      resetPassword,
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

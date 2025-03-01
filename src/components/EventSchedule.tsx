@@ -202,28 +202,37 @@ const EventSchedule = ({ eventId }: EventScheduleProps) => {
 
         // Mapear palestras para o formato Session
         console.log('EventSchedule - Iniciando mapeamento das palestras');
-        const formattedSessions = data.palestras?.map((lecture: Lecture) => ({
-          id: Math.random().toString(36).substr(2, 9),
-          title: lecture.titulo_palestra,
-          description: lecture.descricao_palestra,
-          speaker: {
-            name: lecture.nome_palestrante,
-            avatar: lecture.foto_palestrante,
-            role: `${lecture.cargo_palestrante} @ ${lecture.empresa_palestrante}`,
-            bio: lecture.minibio_palestrante,
-            social: {
-              linkedin: lecture.linkedin_palestrante,
-              instagram: lecture.instagram_palestrante,
-              facebook: lecture.facebook_palestrante
-            }
-          },
-          track: lecture.nomeTrilha,
-          stage: lecture.nomePalco,
-          location: lecture.local,
-          duration: `${lecture.duracao} min`,
-          time: formatFirestoreDate(lecture.hora)
-        })) || [];
-        console.log('EventSchedule - Palestras formatadas:', formattedSessions.length);
+        const formattedSessions = data.palestras?.map((lecture: Lecture) => {
+          console.log('Dados do palestrante:', {
+            nome: lecture.nome_palestrante,
+            instagram: lecture.instagram_palestrante,
+            linkedin: lecture.linkedin_palestrante,
+            facebook: lecture.facebook_palestrante,
+          });
+          
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            title: lecture.titulo_palestra,
+            description: lecture.descricao_palestra,
+            speaker: {
+              name: lecture.nome_palestrante,
+              avatar: lecture.foto_palestrante,
+              role: `${lecture.cargo_palestrante} @ ${lecture.empresa_palestrante}`,
+              bio: lecture.minibio_palestrante,
+              social: {
+                linkedin: lecture.linkedin_palestrante || null,
+                instagram: lecture.instagram_palestrante || null,
+                facebook: lecture.facebook_palestrante || null
+              }
+            },
+            track: lecture.nomeTrilha,
+            stage: lecture.nomePalco,
+            location: lecture.local,
+            duration: `${lecture.duracao} min`,
+            time: formatFirestoreDate(lecture.hora)
+          };
+        }) || [];
+        console.log('Sessões formatadas:', formattedSessions);
 
         setSessions(formattedSessions);
       } catch (error) {
@@ -438,9 +447,9 @@ const EventSchedule = ({ eventId }: EventScheduleProps) => {
                   role: selectedSession.speaker.role,
                   bio: selectedSession.speaker.bio || '',
                   social: {
-                    twitter: '',
-                    linkedin: selectedSession.speaker.social.linkedin,
-                    website: selectedSession.speaker.social.instagram
+                    linkedin: selectedSession.speaker.social?.linkedin || null,
+                    facebook: selectedSession.speaker.social?.facebook || null,
+                    instagram: selectedSession.speaker.social?.instagram || null
                   }
                 },
                 time: selectedSession.time || '',
