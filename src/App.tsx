@@ -49,11 +49,7 @@ function AppContent() {
               }
             />
             <Route
-              path="/recuperar-senha/:email"
-              element={<CreatePassword />}
-            />
-            <Route
-              path="recuperar-senha/:email"
+              path="/recuperar-senha"
               element={<CreatePassword />}
             />
             <Route

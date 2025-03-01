@@ -122,16 +122,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log('📍 URL da API:', API_ENDPOINTS.auth.recuperarSenha);
       console.log('📧 Email a ser enviado:', email);
       
-      // Codifica o email para a URL
+      // Codifica o email para a URL com query string
       const encodedEmail = encodeURIComponent(email);
-      console.log('📧 Email codificado para URL:', encodedEmail);
+      const recoveryUrl = `${window.location.origin}/recuperar-senha?email=${encodedEmail}`;
+      console.log('🔗 URL de recuperação:', recoveryUrl);
 
       const response = await fetch(API_ENDPOINTS.auth.recuperarSenha, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ Email: email }),
+        body: JSON.stringify({ Email: email, RecoveryUrl: recoveryUrl }),
       });
 
       console.log('📥 Status da resposta:', response.status);

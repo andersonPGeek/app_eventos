@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface CreatePasswordProps {
@@ -17,14 +17,14 @@ const CreatePassword = ({ email: firstAccessEmail }: CreatePasswordProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const { createPassword, login } = useAuth();
   const navigate = useNavigate();
-  const { email: recoveryEmail } = useParams();
+  const [searchParams] = useSearchParams();
 
-  // Decodifica o email da URL e usa o email do primeiro acesso ou o email da recuperação de senha
-  const email = firstAccessEmail || (recoveryEmail ? decodeURIComponent(recoveryEmail) : '');
+  // Usa o email do primeiro acesso ou o email da query string
+  const email = firstAccessEmail || searchParams.get('email') || '';
 
   console.log('📧 Email recebido (primeiro acesso):', firstAccessEmail);
-  console.log('📧 Email recebido (recuperação):', recoveryEmail);
-  console.log('📧 Email decodificado:', email);
+  console.log('📧 Email recebido (query string):', searchParams.get('email'));
+  console.log('📧 Email final:', email);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
