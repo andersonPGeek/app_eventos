@@ -53,6 +53,10 @@ function AppContent() {
               element={<CreatePassword />}
             />
             <Route
+              path="recuperar-senha/:email"
+              element={<CreatePassword />}
+            />
+            <Route
               path="/schedule"
               element={
                 selectedEventId ? (
