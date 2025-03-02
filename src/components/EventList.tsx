@@ -503,14 +503,6 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
                     >
                       <Map className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleOpenUber(event)}
-                      title="Abrir no Uber"
-                    >
-                      <Car className="h-4 w-4" />
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
