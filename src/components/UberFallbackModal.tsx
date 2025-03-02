@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "./ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "./ui/sheet";
 import { Button } from "./ui/button";
 import { Car, Copy, Check } from "lucide-react";
 
@@ -36,19 +36,19 @@ const UberFallbackModal = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="bottom" className="h-[90vh] sm:h-[400px]">
+        <SheetHeader className="space-y-4">
+          <SheetTitle className="flex items-center gap-2">
             <Car className="h-5 w-5 text-primary" />
             Continuar para o Uber
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription>
             Não foi possível obter sua localização atual. Você ainda pode abrir o Uber, mas precisará inserir seu endereço manualmente.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="flex flex-col gap-4 py-4">
+        <div className="flex flex-col gap-4 py-6">
           <div className="text-sm text-gray-600">
             <p className="mb-2">Endereço do evento:</p>
             <div className="bg-gray-50 p-3 rounded-lg flex items-start justify-between gap-2">
@@ -74,16 +74,16 @@ const UberFallbackModal = ({
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={onClose}>
+        <SheetFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button onClick={onContinueToUber} className="w-full sm:w-auto">
+            Continuar para o Uber
+          </Button>
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Cancelar
           </Button>
-          <Button onClick={onContinueToUber}>
-            Abrir Uber
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };
 

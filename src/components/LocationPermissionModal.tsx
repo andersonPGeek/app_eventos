@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "./ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "./ui/sheet";
 import { Button } from "./ui/button";
 import { MapPin } from "lucide-react";
 
@@ -22,19 +22,19 @@ const LocationPermissionModal = ({
   onRequestPermission,
 }: LocationPermissionModalProps) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="bottom" className="h-[90vh] sm:h-[450px]">
+        <SheetHeader className="space-y-4">
+          <SheetTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-primary" />
             Permissão de Localização
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription>
             Para chamar um Uber, precisamos da sua localização atual. Por favor, permita o acesso à sua localização.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="flex flex-col gap-4 py-4">
+        <div className="flex flex-col gap-4 py-6">
           <div className="text-sm text-gray-600">
             <p className="mb-2">Ao permitir, você poderá:</p>
             <ul className="list-disc pl-5 space-y-1">
@@ -49,16 +49,16 @@ const LocationPermissionModal = ({
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Agora não
-          </Button>
-          <Button onClick={onRequestPermission}>
+        <SheetFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button onClick={onRequestPermission} className="w-full sm:w-auto">
             Permitir localização
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+            Agora não
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };
 
