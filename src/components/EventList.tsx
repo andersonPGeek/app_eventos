@@ -5,6 +5,8 @@ import { ScrollArea } from "./ui/scroll-area";
 import { CalendarDays, MapPin, Users, Map, Car, ArrowRight } from "lucide-react";
 import { API_ENDPOINTS } from "../config/api";
 import { useNavigate } from "react-router-dom";
+import LocationPermissionModal from './LocationPermissionModal';
+import UberFallbackModal from './UberFallbackModal';
 
 interface FirestoreTimestamp {
   _seconds: number;
@@ -50,6 +52,10 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showUberFallbackModal, setShowUberFallbackModal] = useState(false);
+  const [pendingUberEvent, setPendingUberEvent] = useState<Event | null>(null);
   const navigate = useNavigate();
 
   const CACHE_KEY = 'events_cache';
@@ -359,25 +365,157 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
     }
   };
 
-  const handleOpenUber = (event: Event) => {
-    if (!userLocation) {
-      alert('Não foi possível obter sua localização. Por favor, permita o acesso à localização.');
-      return;
+  const handleOpenUber = async (event: Event) => {
+    setSelectedEvent(event);
+    const permissionState = await checkLocationPermission();
+    
+    if (permissionState === 'granted') {
+      // Se já tem permissão, tenta obter a localização atual
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude: fromLat, longitude: fromLng } = position.coords;
+          const { latitude: toLat, longitude: toLng } = event;
+          
+          // Determina qual URL usar baseado no sistema operacional
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          let uberUrl;
+          
+          if (isIOS) {
+            // URL para iOS
+            uberUrl = `uber://?action=setPickup&pickup[latitude]=${fromLat}&pickup[longitude]=${fromLng}&dropoff[latitude]=${toLat}&dropoff[longitude]=${toLng}`;
+            
+            // Fallback para web se o app não estiver instalado
+            setTimeout(() => {
+              window.location.href = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${fromLat}&pickup[longitude]=${fromLng}&dropoff[latitude]=${toLat}&dropoff[longitude]=${toLng}`;
+            }, 500);
+          } else {
+            // URL para Android e outros
+            uberUrl = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${fromLat}&pickup[longitude]=${fromLng}&dropoff[latitude]=${toLat}&dropoff[longitude]=${toLng}`;
+          }
+   
+          window.location.href = uberUrl;
+        },
+        (error) => {
+          console.error('Erro ao obter localização:', error);
+          setShowUberFallbackModal(true);
+        }
+      );
+    } else {
+      // Se não tem permissão, guarda o evento e mostra o modal de permissão
+      setPendingUberEvent(event);
+      setShowLocationModal(true);
     }
-
-    if (!event.latitude || !event.longitude) {
-      alert('Não foi possível obter as coordenadas do evento. Por favor, tente novamente mais tarde.');
-      return;
-    }
-
-    const uberUrl = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${userLocation.latitude}&pickup[longitude]=${userLocation.longitude}&pickup[formatted_address]=Localização%20Atual&dropoff[latitude]=${event.latitude}&dropoff[longitude]=${event.longitude}&dropoff[formatted_address]=${encodeURIComponent(event.title)}`;
-    console.log('🚗 URL do Uber:', uberUrl);
-    window.open(uberUrl, '_blank');
   };
 
   const handleEventSelect = (eventId: string) => {
     onSelectEvent(eventId);
     navigate("/schedule");
+  };
+
+  const handleContinueToUber = async () => {
+    if (!selectedEvent) return;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const encodedAddress = encodeURIComponent(selectedEvent.fullAddress);
+
+    // URL do Uber apenas com endereço de destino
+    const uberUrl = `https://m.uber.com/ul/?drop=${encodedAddress}`;
+
+    if (isIOS) {
+      // Tenta abrir o app primeiro
+      window.open(`uber://?action=setPickup&dropoff[formatted_address]=${encodedAddress}`);
+      
+      // Fallback para web após 500ms
+      setTimeout(() => {
+        window.open(uberUrl, '_blank');
+      }, 500);
+    } else {
+      // Em outros dispositivos, abre direto a versão web
+      window.open(uberUrl, '_blank');
+    }
+
+    setShowUberFallbackModal(false);
+  };
+
+  const checkLocationPermission = async (): Promise<PermissionState> => {
+    try {
+      const permission = await navigator.permissions.query({ name: 'geolocation' });
+      return permission.state;
+    } catch (error) {
+      console.error('Erro ao verificar permissão:', error);
+      return 'denied';
+    }
+  };
+
+  const requestLocationPermission = () => {
+    let locationGranted = false;
+    let timeoutId: NodeJS.Timeout;
+
+    // Timer de 3 segundos
+    const timer = new Promise((resolve) => {
+      timeoutId = setTimeout(() => {
+        if (!locationGranted) {
+          console.log('Timeout: Permissão de localização não detectada em 3 segundos');
+          resolve('timeout');
+        }
+      }, 3000);
+    });
+
+    // Requisição de localização
+    const locationRequest = new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          locationGranted = true;
+          clearTimeout(timeoutId);
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          
+          // Permissão concedida com sucesso
+          setShowLocationModal(false);
+          if (pendingUberEvent) {
+            handleOpenUber(pendingUberEvent);
+            setPendingUberEvent(null);
+          }
+          resolve('granted');
+        },
+        (error) => {
+          locationGranted = true;
+          clearTimeout(timeoutId);
+          console.error('Erro ao obter localização:', error);
+          resolve('error');
+
+          // Se o erro for de permissão negada
+          if (error.code === error.PERMISSION_DENIED) {
+            setShowLocationModal(false);
+            if (pendingUberEvent) {
+              setSelectedEvent(pendingUberEvent);
+              setShowUberFallbackModal(true);
+              setPendingUberEvent(null);
+            }
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
+    });
+
+    // Corrida em paralelo entre o timer e a requisição de localização
+    Promise.race([locationRequest, timer]).then((result) => {
+      if (result === 'timeout' && !locationGranted) {
+        // Se o timeout vencer e a localização não foi concedida
+        setShowLocationModal(false);
+        if (pendingUberEvent) {
+          setSelectedEvent(pendingUberEvent);
+          setShowUberFallbackModal(true);
+          setPendingUberEvent(null);
+        }
+      }
+    });
   };
 
   if (loading) {
@@ -404,71 +542,86 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-center">
-          Selecione um Evento
-        </h1>
-        <div className="grid gap-4">
-          {events.map((event) => (
-            <Card
-              key={event.sessionId}
-              className="overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              <div className="relative h-48">
-                <img
-                  src={event.imageUrl}
-                  alt={event.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-0 right-0 bg-black bg-opacity-70 text-white px-4 py-2 m-2 rounded-md">
-                  <CalendarDays className="w-4 h-4 inline-block mr-2" />
-                  {event.date}
-                </div>
-              </div>
-              <CardContent className="p-6">
-                <h2 className="text-xl font-bold mb-2">{event.title}</h2>
-                <div className="grid gap-2 text-sm text-gray-600 mb-4">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    {event.fullAddress}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    {event.attendees} participantes
+    <>
+      <div className="min-h-screen bg-gray-100 p-4">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6 text-center">
+            Selecione um Evento
+          </h1>
+          <div className="grid gap-4">
+            {events.map((event) => (
+              <Card
+                key={event.sessionId}
+                className="overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <div className="relative h-48">
+                  <img
+                    src={event.imageUrl}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-0 right-0 bg-black bg-opacity-70 text-white px-4 py-2 m-2 rounded-md">
+                    <CalendarDays className="w-4 h-4 inline-block mr-2" />
+                    {event.date}
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1 flex items-center justify-center gap-2"
-                    onClick={() => handleEventSelect(event.id)}
-                  >
-                    Entrar
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleOpenMaps(event)}
-                    title="Abrir no Maps"
-                  >
-                    <Map className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleOpenUber(event)}
-                    title="Abrir no Uber"
-                  >
-                    <Car className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-bold mb-2">{event.title}</h2>
+                  <div className="grid gap-2 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      {event.fullAddress}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      {event.attendees} participantes
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 flex items-center justify-center gap-2"
+                      onClick={() => handleEventSelect(event.id)}
+                    >
+                      Entrar
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleOpenMaps(event)}
+                      title="Abrir no Maps"
+                    >
+                      <Map className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleOpenUber(event)}
+                      title="Abrir no Uber"
+                    >
+                      <Car className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+
+      <LocationPermissionModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onRequestPermission={requestLocationPermission}
+      />
+
+      <UberFallbackModal
+        isOpen={showUberFallbackModal}
+        onClose={() => setShowUberFallbackModal(false)}
+        eventAddress={selectedEvent?.fullAddress || ''}
+        onContinueToUber={handleContinueToUber}
+      />
+    </>
   );
 };
 

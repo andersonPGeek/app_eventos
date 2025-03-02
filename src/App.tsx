@@ -1,7 +1,7 @@
 import { Suspense, useState } from "react";
 import { CartProvider } from "./contexts/CartContext";
 import { AuthProvider } from "./contexts/AuthContext";
-import { useRoutes, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Home from "./components/home";
 import LoginPage from "./components/LoginPage";
 import EventList from "./components/EventList";
@@ -18,18 +18,22 @@ import CreatePassword from "./components/CreatePassword";
 
 function AppContent() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [isNavigationEnabled, setIsNavigationEnabled] = useState(false);
   const { isOpen, onClose, onInstall, isIOS } = useInstallPWA();
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
   const handleEventSelect = (eventId: string) => {
     setSelectedEventId(eventId);
-    setIsNavigationEnabled(true);
   };
 
   // Verifica se está na rota de recuperação de senha
   const isPasswordRecoveryRoute = location.pathname.startsWith('/recuperar-senha');
+  
+  // Verifica se está na lista de eventos
+  const isEventListRoute = location.pathname === '/' && isAuthenticated;
+
+  // Só mostra o BottomNav se tiver um evento selecionado e não estiver nas rotas especiais
+  const showBottomNav = selectedEventId && isAuthenticated && !isPasswordRecoveryRoute && !isEventListRoute;
 
   return (
     <Suspense fallback={<p>Carregando...</p>}>
@@ -63,7 +67,7 @@ function AppContent() {
             <Route 
               path="/sponsors" 
               element={
-                isNavigationEnabled ? (
+                selectedEventId ? (
                   <SponsorShowcase />
                 ) : (
                   <Navigate to="/" />
@@ -73,7 +77,7 @@ function AppContent() {
             <Route 
               path="/marketplace" 
               element={
-                isNavigationEnabled ? (
+                selectedEventId ? (
                   <Marketplace />
                 ) : (
                   <Navigate to="/" />
@@ -83,8 +87,8 @@ function AppContent() {
             <Route 
               path="/checkin" 
               element={
-                isNavigationEnabled ? (
-                  <CheckInSection eventId={selectedEventId!} />
+                selectedEventId ? (
+                  <CheckInSection eventId={selectedEventId} />
                 ) : (
                   <Navigate to="/" />
                 )
@@ -93,7 +97,7 @@ function AppContent() {
             <Route 
               path="/product/:id" 
               element={
-                isNavigationEnabled ? (
+                selectedEventId ? (
                   <ProductDetails />
                 ) : (
                   <Navigate to="/" />
@@ -102,7 +106,7 @@ function AppContent() {
             />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-          {isAuthenticated && !isPasswordRecoveryRoute && <BottomNav isEnabled={isNavigationEnabled} />}
+          {showBottomNav && <BottomNav />}
           <InstallPWAModal
             isOpen={isOpen}
             onClose={onClose}

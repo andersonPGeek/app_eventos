@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Check, MapPin } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { useAuth } from "../contexts/AuthContext";
 import { API_ENDPOINTS } from "../config/api";
 
@@ -37,6 +38,14 @@ const CheckInSection: React.FC<CheckInSectionProps> = ({ eventId, isCheckedIn })
   const [loading, setLoading] = useState(false);
   const [eventLocation, setEventLocation] = useState<EventLocation | null>(null);
   const { userId } = useAuth();
+  const [showManualVerification, setShowManualVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState(['', '', '', '']);
+  const inputRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
 
   // Função para calcular a distância entre dois pontos usando a fórmula de Haversine
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -107,36 +116,68 @@ const CheckInSection: React.FC<CheckInSectionProps> = ({ eventId, isCheckedIn })
     }
   }, [userId, eventId]);
 
+  const handleCodeChange = (index: number, value: string) => {
+    if (value.length > 1) return; // Aceita apenas um dígito
+    if (!/^\d*$/.test(value)) return; // Aceita apenas números
+
+    const newCode = [...verificationCode];
+    newCode[index] = value;
+    setVerificationCode(newCode);
+
+    // Move para o próximo input se houver um valor
+    if (value && index < 3) {
+      inputRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !verificationCode[index] && index > 0) {
+      // Move para o input anterior ao pressionar backspace em um campo vazio
+      inputRefs[index - 1].current?.focus();
+    }
+  };
+
+  const validateManualCode = () => {
+    const expectedCode = ['1', '3', '0', '4'];
+    return verificationCode.every((digit, index) => digit === expectedCode[index]);
+  };
+
   const handleCheckIn = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Obter localização atual
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
+      if (showManualVerification) {
+        if (!validateManualCode()) {
+          setError('Código de verificação inválido');
+          return;
+        }
+      } else {
+        // Obter localização atual
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          });
         });
-      });
 
-      if (!eventLocation) {
-        throw new Error('Dados do evento não disponíveis');
-      }
+        if (!eventLocation) {
+          throw new Error('Dados do evento não disponíveis');
+        }
 
-      const distance = calculateDistance(
-        position.coords.latitude,
-        position.coords.longitude,
-        eventLocation.latitude,
-        eventLocation.longitude
-      );
+        const distance = calculateDistance(
+          position.coords.latitude,
+          position.coords.longitude,
+          eventLocation.latitude,
+          eventLocation.longitude
+        );
 
-      console.log('Distância até o evento:', distance, 'metros');
-
-      if (distance > 10) { // 10 metros de raio
-        setError(`Você precisa estar no local do evento para fazer check-in.\nEndereço do evento: ${eventLocation.logradouro}, ${eventLocation.numero} - ${eventLocation.bairro}, ${eventLocation.cidade}`);
-        return;
+        if (distance > 10) {
+          setShowManualVerification(true);
+          setError(null);
+          return;
+        }
       }
 
       // Realizar check-in
@@ -159,12 +200,12 @@ const CheckInSection: React.FC<CheckInSectionProps> = ({ eventId, isCheckedIn })
       }
     } catch (err: any) {
       console.error('Erro:', err);
-      if (err.code === 1) { // Erro de permissão negada
-        setError('Por favor, permita o acesso à sua localização para realizar o check-in.');
-      } else if (err.code === 2) { // Erro de posição indisponível
-        setError('Não foi possível obter sua localização. Verifique se o GPS está ativado.');
+      if (err.code === 1 || err.code === 2) {
+        setShowManualVerification(true);
+        setError(null);
       } else {
-        setError(err.message || 'Erro ao realizar check-in');
+        setError('Erro ao realizar check-in');
+        setShowManualVerification(true);
       }
     } finally {
       setLoading(false);
@@ -199,34 +240,62 @@ const CheckInSection: React.FC<CheckInSectionProps> = ({ eventId, isCheckedIn })
           <div className="space-y-4">
             <div className="text-center mb-4">
               <p className="text-sm text-gray-600">
-                Para realizar o check-in, você precisa estar no local do evento
+                {showManualVerification 
+                  ? "Digite o código de verificação fornecido no local"
+                  : "Para realizar o check-in, você precisa estar no local do evento"}
               </p>
-              {eventLocation && (
+              {eventLocation && !showManualVerification && (
                 <p className="text-xs text-gray-500 mt-2">
                   {eventLocation.logradouro}, {eventLocation.numero} - {eventLocation.bairro}, {eventLocation.cidade}
                 </p>
               )}
             </div>
-            
-            <Button 
-              onClick={handleCheckIn}
-              className="w-full flex items-center justify-center gap-2"
-              disabled={loading || !eventLocation}
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Verificando localização...
-                </div>
-              ) : (
-                <>
-                  <MapPin className="w-4 h-4" />
-                  Realizar Check-in
-                </>
-              )}
-            </Button>
 
-            {error && (
+            {showManualVerification ? (
+              <div className="space-y-4">
+                <div className="flex justify-center gap-2">
+                  {verificationCode.map((digit, index) => (
+                    <Input
+                      key={index}
+                      ref={inputRefs[index]}
+                      type="text"
+                      value={digit}
+                      onChange={(e) => handleCodeChange(index, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(index, e)}
+                      className="w-12 h-12 text-center text-lg font-bold"
+                      maxLength={1}
+                    />
+                  ))}
+                </div>
+                <Button 
+                  onClick={handleCheckIn}
+                  className="w-full"
+                  disabled={loading || verificationCode.some(digit => !digit)}
+                >
+                  {loading ? "Verificando..." : "Verificar Código"}
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                onClick={handleCheckIn}
+                className="w-full flex items-center justify-center gap-2"
+                disabled={loading || !eventLocation}
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Verificando localização...
+                  </div>
+                ) : (
+                  <>
+                    <MapPin className="w-4 h-4" />
+                    Realizar Check-in
+                  </>
+                )}
+              </Button>
+            )}
+
+            {error && !showManualVerification && (
               <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded whitespace-pre-line">
                 {error}
               </div>

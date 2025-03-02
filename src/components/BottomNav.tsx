@@ -1,46 +1,41 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
   Calendar,
   Heart,
   ShoppingBag,
+  MoreHorizontal,
   MapPin,
-  LogOut,
+  LogOut
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./ui/sheet";
 
-interface BottomNavProps {
-  isEnabled: boolean;
-}
-
-const BottomNav = ({ isEnabled }: BottomNavProps) => {
+const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
   const getItemStyle = (path: string) => {
-    const baseStyle = "flex flex-col items-center gap-1";
+    const baseStyle = "flex flex-col items-center gap-1 cursor-pointer";
     const activeStyle = isActive(path) ? "text-primary" : "text-gray-500";
-    
-    // Home está sempre habilitado
-    if (path === "/") {
-      return `${baseStyle} cursor-pointer ${activeStyle} hover:text-gray-900`;
-    }
-
-    // Outros itens dependem de isEnabled
-    if (isEnabled) {
-      return `${baseStyle} cursor-pointer ${activeStyle} hover:text-gray-900`;
-    }
-
-    return `${baseStyle} cursor-not-allowed opacity-50 pointer-events-none`;
+    return `${baseStyle} ${activeStyle} hover:text-gray-900`;
   };
 
   const handleLogout = () => {
     logout();
     navigate("/");
+    setIsMoreOpen(false);
   };
 
   return (
@@ -54,40 +49,59 @@ const BottomNav = ({ isEnabled }: BottomNavProps) => {
           <span className="text-xs">Home</span>
         </div>
         <div
-          onClick={() => isEnabled && navigate("/schedule")}
+          onClick={() => navigate("/schedule")}
           className={getItemStyle("/schedule")}
         >
           <Calendar className="h-5 w-5" />
           <span className="text-xs">Programação</span>
         </div>
         <div
-          onClick={() => isEnabled && navigate("/sponsors")}
+          onClick={() => navigate("/sponsors")}
           className={getItemStyle("/sponsors")}
         >
           <Heart className="h-5 w-5" />
           <span className="text-xs">Patrocinadores</span>
         </div>
         <div
-          onClick={() => isEnabled && navigate("/marketplace")}
+          onClick={() => navigate("/marketplace")}
           className={getItemStyle("/marketplace")}
         >
           <ShoppingBag className="h-5 w-5" />
           <span className="text-xs">Loja</span>
         </div>
-        <div
-          onClick={() => isEnabled && navigate("/checkin")}
-          className={getItemStyle("/checkin")}
-        >
-          <MapPin className="h-5 w-5" />
-          <span className="text-xs">Check-in</span>
-        </div>
-        <div
-          onClick={handleLogout}
-          className="flex flex-col items-center gap-1 cursor-pointer text-red-500 hover:text-red-700"
-        >
-          <LogOut className="h-5 w-5" />
-          <span className="text-xs">Sair</span>
-        </div>
+
+        <Sheet open={isMoreOpen} onOpenChange={setIsMoreOpen}>
+          <SheetTrigger asChild>
+            <div className={`flex flex-col items-center gap-1 cursor-pointer ${isMoreOpen ? 'text-primary' : 'text-gray-500'} hover:text-gray-900`}>
+              <MoreHorizontal className="h-5 w-5" />
+              <span className="text-xs">Mais</span>
+            </div>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[200px]">
+            <SheetHeader className="text-left">
+              <SheetTitle>Mais opções</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 space-y-4">
+              <div
+                onClick={() => {
+                  navigate("/checkin");
+                  setIsMoreOpen(false);
+                }}
+                className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100"
+              >
+                <MapPin className="h-5 w-5" />
+                <span>Check-in</span>
+              </div>
+              <div
+                onClick={handleLogout}
+                className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 text-red-500 hover:text-red-700"
+              >
+                <LogOut className="h-5 w-5" />
+                <span>Sair</span>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );
