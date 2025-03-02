@@ -58,29 +58,6 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
   const [pendingUberEvent, setPendingUberEvent] = useState<Event | null>(null);
   const navigate = useNavigate();
 
-  const CACHE_KEY = 'events_cache';
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos em millisegundos
-
-  const getCache = () => {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < CACHE_DURATION) {
-        console.log('📦 Usando dados do cache');
-        return data;
-      }
-      console.log('🕒 Cache expirado');
-    }
-    return null;
-  };
-
-  const setCache = (data: Event[]) => {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      data,
-      timestamp: Date.now()
-    }));
-  };
-
   const formatFirestoreDate = (timestamp: FirestoreTimestamp) => {
     const startTime = performance.now();
     try {
@@ -214,138 +191,71 @@ const EventList = ({ onSelectEvent }: EventListProps) => {
   };
 
   const fetchAndUpdateEvents = async () => {
-    const fetchStartTime = performance.now();
-    console.log(`📡 Fazendo requisição para: ${API_ENDPOINTS.eventos}`);
-    const response = await fetch(API_ENDPOINTS.eventos);
-    console.log(`⏱️ Tempo de requisição: ${(performance.now() - fetchStartTime).toFixed(2)}ms`);
-    
-    const jsonStartTime = performance.now();
-    const data = await response.json();
-    console.log(`⏱️ Tempo de parse JSON: ${(performance.now() - jsonStartTime).toFixed(2)}ms`);
-    console.log(`📦 Quantidade de eventos recebidos: ${data.length}`);
-    
-    const formatStartTime = performance.now();
-    const formattedEvents = await Promise.all(data.flatMap(async (event: EventData) => {
-      console.log(`🔄 Processando evento: ${event.nomeEvento}`, {
-        latitude: event.latitude,
-        longitude: event.longitude,
-        tipo_lat: typeof event.latitude,
-        tipo_long: typeof event.longitude
-      });
-      const eventStartTime = performance.now();
+    try {
+      const response = await fetch(API_ENDPOINTS.eventos);
+      if (!response.ok) throw new Error('Falha ao buscar eventos');
       
-      let coordinates = { lat: 0, lng: 0 };
-      
-      // Verificar se o evento já tem coordenadas válidas
-      if (event.latitude !== undefined && event.longitude !== undefined) {
-        const lat = Number(event.latitude);
-        const lng = Number(event.longitude);
-        
-        console.log('📊 Valores convertidos:', {
-          lat: lat,
-          lng: lng,
-          isNaN_lat: isNaN(lat),
-          isNaN_lng: isNaN(lng)
-        });
+      const responseData = await response.json();
+      console.log('🔍 Dados recebidos da API:', responseData);
 
-        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-          coordinates = { lat, lng };
-          console.log('📍 Usando coordenadas existentes do evento:', coordinates);
-        } else {
-          console.log('⚠️ Coordenadas existentes inválidas:', {
-            latitude_original: event.latitude,
-            longitude_original: event.longitude,
-            latitude_convertida: lat,
-            longitude_convertida: lng
-          });
+      // Acessar o array de eventos dentro da resposta
+      const eventsData = responseData.eventos || [];
+      console.log('📋 Lista de eventos:', eventsData);
+
+      const events: Event[] = [];
+
+      for (const event of eventsData) {
+        // Verificar se todos os campos necessários existem
+        if (!event || typeof event !== 'object') continue;
+        console.log('🎫 Processando evento:', event);
+
+        // Formatar a data com verificação de segurança
+        let formattedDate = '';
+        if (Array.isArray(event.dataEvento) && event.dataEvento.length > 0) {
+          formattedDate = formatFirestoreDate(event.dataEvento[0]);
+        } else if (event.dataEvento) {
+          formattedDate = formatFirestoreDate(event.dataEvento);
         }
-      }
-      
-      // Se não tiver coordenadas válidas, tentar geocodificação
-      if (coordinates.lat === 0 || coordinates.lng === 0) {
-        const address = formatFullAddress(event);
-        console.log('🔍 Tentando geocodificação para endereço:', address);
-        const geocoded = await geocodeAddress(address);
-        if (geocoded) {
-          coordinates = geocoded;
-          console.log('📍 Coordenadas obtidas por geocodificação:', coordinates);
-        } else {
-          console.warn('⚠️ Geocodificação falhou para:', event.nomeEvento);
-        }
+
+        const formattedEvent: Event = {
+          id: event.id || '',
+          sessionId: event.id || '',
+          title: event.nomeEvento || 'Evento sem nome',
+          date: formattedDate,
+          location: event.cidade && event.estado ? `${event.cidade}, ${event.estado}` : 'Local não informado',
+          fullAddress: formatFullAddress(event),
+          attendees: event.participantes || 0,
+          imageUrl: event.foto || '',
+          latitude: Number(event.latitude) || 0,
+          longitude: Number(event.longitude) || 0
+        };
+        events.push(formattedEvent);
       }
 
-      // Validação final das coordenadas
-      if (coordinates.lat === 0 || coordinates.lng === 0 || 
-          isNaN(coordinates.lat) || isNaN(coordinates.lng)) {
-        console.error('❌ Coordenadas inválidas para o evento:', {
-          evento: event.nomeEvento,
-          coordenadas: coordinates,
-          endereco: formatFullAddress(event)
-        });
-      }
-      
-      const formattedSessions = event.dataEvento.map((timestamp, index) => ({
-        id: event.id,
-        sessionId: `${event.id}-${index}`,
-        title: event.nomeEvento,
-        date: formatFirestoreDate(timestamp),
-        location: `${event.cidade}, ${event.estado}`,
-        fullAddress: formatFullAddress(event),
-        attendees: event.participantes,
-        imageUrl: event.foto,
-        latitude: coordinates.lat,
-        longitude: coordinates.lng
-      }));
-      
-      console.log(`⏱️ Tempo total de processamento do evento: ${(performance.now() - eventStartTime).toFixed(2)}ms`);
-      return formattedSessions;
-    }));
-
-    const flattenedEvents = formattedEvents.flat();
-    console.log(`⏱️ Tempo total de formatação: ${(performance.now() - formatStartTime).toFixed(2)}ms`);
-    console.log(`📊 Total de sessões formatadas: ${flattenedEvents.length}`);
-    
-    // Validar se todos os eventos têm coordenadas válidas
-    const eventsWithoutCoordinates = flattenedEvents.filter(
-      event => !event.latitude || !event.longitude || 
-               event.latitude === 0 || event.longitude === 0
-    );
-    
-    if (eventsWithoutCoordinates.length > 0) {
-      console.warn('⚠️ Eventos sem coordenadas válidas:', eventsWithoutCoordinates.map(e => e.title));
+      console.log('✅ Eventos formatados:', events);
+      setEvents(events);
+      return events;
+    } catch (error) {
+      console.error('❌ Erro ao buscar eventos:', error);
+      throw error;
     }
-    
-    setCache(flattenedEvents);
-    setEvents(flattenedEvents);
   };
 
   useEffect(() => {
     const fetchEvents = async () => {
-      const totalStartTime = performance.now();
       console.log('🚀 Iniciando busca de eventos...');
+      setLoading(true);
       
       try {
-        // Tentar usar cache primeiro
-        const cachedEvents = getCache();
-        if (cachedEvents) {
-          setEvents(cachedEvents);
-          setLoading(false);
-          
-          // Atualizar em background
-          fetchAndUpdateEvents();
-          return;
-        }
-
         await fetchAndUpdateEvents();
+        console.log('✅ Dados carregados da API com sucesso');
       } catch (error) {
-        console.error('❌ Erro detalhado ao buscar eventos:', error);
+        console.error('❌ Erro ao buscar eventos:', error);
       } finally {
         setLoading(false);
-        console.log(`⏱️ Tempo total de execução: ${(performance.now() - totalStartTime).toFixed(2)}ms`);
       }
     };
 
-    console.log('🔄 Iniciando ciclo de busca de eventos');
     fetchEvents();
   }, []);
 
